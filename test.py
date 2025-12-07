@@ -20,7 +20,13 @@ def fatal(msg: str) -> None:
         print("오류:", msg, file=sys.stderr)
     sys.exit(1)
 
-def load_json(path: str) -> dict:
+def to_raw_url(url: str) -> str:
+    # why: 사용자가 /blob/ URL을 붙여도 RAW로 자동 변환
+    if "github.com" in url and "/blob/" in url:
+        return url.replace("https://github.com/", "https://raw.githubusercontent.com/").replace("/blob/", "/")
+    return url
+
+def load_json_file(path: str) -> dict:
     if not os.path.exists(path):
         fatal(f"데이터 파일을 찾을 수 없습니다:\n{path}")
     try:
@@ -31,14 +37,34 @@ def load_json(path: str) -> dict:
     except Exception as e:
         fatal(f"data.json 로드 실패:\n{e}")
 
+def load_json_url(url: str, timeout: int = 10) -> dict:
+    try:
+        r = requests.get(to_raw_url(url), timeout=timeout)
+        r.raise_for_status()
+        return r.json()
+    except json.JSONDecodeError as e:
+        fatal(f"URL JSON 파싱 오류:\n{e}")
+    except requests.RequestException as e:
+        fatal(f"URL 로드 실패:\n{e}")
+
 def require_keys(obj: dict, keys: list, ctx: str) -> None:
     missing = [k for k in keys if k not in obj]
     if missing:
         fatal(f"{ctx}에 필요한 키가 없습니다: {', '.join(missing)}")
 
 def load_data() -> dict:
-    data_path = os.environ.get("DATA_JSON") or resource_path("data.json")
-    data = load_json(data_path)
+    # 1) 원격 URL 우선 (DATA_JSON_URL)
+    url = os.environ.get("DATA_JSON_URL", "").strip()
+    if url.startswith("http://") or url.startswith("https://"):
+        data = load_json_url(url)
+    else:
+        # 2) 로컬 경로 (DATA_JSON)
+        local_path = os.environ.get("DATA_JSON")
+        if local_path:
+            data = load_json_file(local_path)
+        else:
+            # 3) 실행 폴더의 data.json
+            data = load_json_file(resource_path("data.json"))
 
     # 최소 스키마 검사
     require_keys(
@@ -48,7 +74,7 @@ def load_data() -> dict:
     )
     require_keys(data["telegram"], ["token", "chat_id"], "data.json.telegram")
 
-    # 타입 방어(왜: 잘못된 JSON 구조 대비)
+    # 타입 방어
     if not isinstance(data["item_images"], dict):
         fatal("data.json.item_images 는 객체(맵)여야 합니다.")
     if not isinstance(data["dealers"], dict):
@@ -184,7 +210,6 @@ def submit_order():
         return
 
     info = dealers[dealer]
-    # 필수 필드 방어
     for k in ("phone", "addr"):
         if k not in info:
             messagebox.showerror("오류", f"협력사 데이터에 '{k}' 정보가 없습니다.")
@@ -205,7 +230,6 @@ def submit_order():
         f"🛒 주문 품목:\n{order_list_msg}"
     )
 
-    # why: 네트워크 일시적 실패 대비
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
@@ -242,7 +266,6 @@ def open_item_image(event=None):
     try:
         os.startfile(filepath)  # Windows
     except AttributeError:
-        # macOS/Linux 호환
         try:
             if sys.platform == "darwin":
                 os.system(f'open "{filepath}"')
@@ -346,7 +369,5 @@ ttk.Button(btn_frame, text="선택 항목 삭제", command=remove_from_cart).pac
 ttk.Button(btn_frame, text="📌 필독", command=show_notice).pack(side="left", padx=10)
 ttk.Button(btn_frame, text="발주 보내기", command=submit_order).pack(side="right")
 
-# 초기 세부 품목 초기화
 update_submenu()
-
 root.mainloop()
