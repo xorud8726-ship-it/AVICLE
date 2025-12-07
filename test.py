@@ -3,12 +3,15 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import sys, os, time, datetime, requests, configparser, json
 
-# --------------------------- 공용 유틸 ---------------------------
+# ===================== 텔레그램 (코드 내 직접 설정) =====================
+# 환경변수(있으면 우선): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+TOKEN   = os.environ.get("TELEGRAM_TOKEN")    or "7895331234:REDACTED"
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")  or "-1003315436286"
 
+# ===================== 공용 유틸 =====================
 def resource_path(relative_path: str) -> str:
-    # why: PyInstaller 배포 시 리소스 경로 대응
     try:
-        base_path = sys._MEIPASS  # type: ignore[attr-defined]
+        base_path = sys._MEIPASS  # pyinstaller
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
@@ -21,7 +24,6 @@ def fatal(msg: str) -> None:
     sys.exit(1)
 
 def to_raw_url(url: str) -> str:
-    # why: 사용자가 /blob/ URL을 붙여도 RAW로 자동 변환
     if "github.com" in url and "/blob/" in url:
         return url.replace("https://github.com/", "https://raw.githubusercontent.com/").replace("/blob/", "/")
     return url
@@ -50,64 +52,45 @@ def load_json_url(url: str, timeout: int = 10) -> dict:
 def require_keys(obj: dict, keys: list, ctx: str) -> None:
     missing = [k for k in keys if k not in obj]
     if missing:
-        fatal(f"{ctx}에 필요한 키가 없습니다: {', '.join(missing)}")
+        top = ", ".join(sorted(obj.keys()))
+        fatal(f"{ctx}에 필요한 키가 없습니다: {', '.join(missing)}\n- 현재 키: [{top}]")
+
+# ===================== 데이터 로드 =====================
+CONFIG_FILE = "config.ini"
 
 def load_data() -> dict:
-    # 1) 원격 URL 우선 (DATA_JSON_URL)
+    # URL(환경변수) → 로컬 경로 → 실행폴더 data.json
     url = os.environ.get("DATA_JSON_URL", "").strip()
-    if url.startswith("http://") or url.startswith("https://"):
+    path = os.environ.get("DATA_JSON", "").strip()
+    if url.startswith("http"):
         data = load_json_url(url)
+    elif path:
+        data = load_json_file(path)
     else:
-        # 2) 로컬 경로 (DATA_JSON)
-        local_path = os.environ.get("DATA_JSON")
-        if local_path:
-            data = load_json_file(local_path)
-        else:
-            # 3) 실행 폴더의 data.json
-            data = load_json_file(resource_path("data.json"))
+        data = load_json_file(resource_path("data.json"))
 
-    # 최소 스키마 검사
-    require_keys(
-        data,
-        ["telegram", "item_images", "dealers", "main_categories", "set_rules", "items"],
-        "data.json",
-    )
-    require_keys(data["telegram"], ["token", "chat_id"], "data.json.telegram")
+    # telegram은 JSON에서 요구하지 않음(코드 내에서 관리)
+    require_keys(data, ["item_images", "dealers", "main_categories", "set_rules", "items"], "data.json")
 
     # 타입 방어
-    if not isinstance(data["item_images"], dict):
-        fatal("data.json.item_images 는 객체(맵)여야 합니다.")
-    if not isinstance(data["dealers"], dict):
-        fatal("data.json.dealers 는 객체(맵)여야 합니다.")
-    if not isinstance(data["main_categories"], list):
-        fatal("data.json.main_categories 는 리스트여야 합니다.")
-    if not isinstance(data["set_rules"], dict):
-        fatal("data.json.set_rules 는 객체(맵)여야 합니다.")
-    if not isinstance(data["items"], dict):
-        fatal("data.json.items 는 객체(맵)여야 합니다.")
+    if not isinstance(data["item_images"], dict): fatal("data.json.item_images 는 객체여야 합니다.")
+    if not isinstance(data["dealers"], dict): fatal("data.json.dealers 는 객체여야 합니다.")
+    if not isinstance(data["main_categories"], list): fatal("data.json.main_categories 는 리스트여야 합니다.")
+    if not isinstance(data["set_rules"], dict): fatal("data.json.set_rules 는 객체여야 합니다.")
+    if not isinstance(data["items"], dict): fatal("data.json.items 는 객체여야 합니다.")
 
     return data
 
-# --------------------------- 전역 데이터 로드 ---------------------------
-
-CONFIG_FILE = "config.ini"
 _data = load_data()
-
-# 🔹 텔레그램 정보 (data.json에서 로드)
-TOKEN = _data["telegram"]["token"]
-CHAT_ID = _data["telegram"]["chat_id"]
-
-# 🔹 외부 데이터 바인딩
-item_images = _data["item_images"]
-dealers = _data["dealers"]
+item_images     = _data["item_images"]
+dealers         = _data["dealers"]
 main_categories = _data["main_categories"]
-set_rules = _data["set_rules"]
-items = _data["items"]
+set_rules       = _data["set_rules"]
+items           = _data["items"]
 
 cart = []
 
-# --------------------------- 창 위치 저장/복원 ---------------------------
-
+# ===================== 창 위치 저장/복원 =====================
 def load_window_position():
     if not os.path.exists(CONFIG_FILE):
         return None
@@ -125,25 +108,22 @@ def save_window_position():
     with open(CONFIG_FILE, "w") as f:
         config.write(f)
 
-# --------------------------- 이미지 탐색 ---------------------------
-
+# ===================== 이미지 탐색 =====================
 def find_image_file(filename):
-    # why: 확장자 가변(.jpg/.jpeg/.png) 및 PyInstaller 리소스 경로 지원
+    # why: 확장자 가변(.jpg/.jpeg/.png)
     filename_without_ext = os.path.splitext(filename)[0]
     image_folder = resource_path(os.path.join("avicle"))
     if not os.path.isdir(image_folder):
         print("이미지 폴더 없음:", image_folder)
         return None
-    possible_ext = [".jpg", ".jpeg", ".png"]
-    for ext in possible_ext:
+    for ext in (".jpg", ".jpeg", ".png"):
         full_path = os.path.join(image_folder, filename_without_ext + ext)
         print("이미지 검사:", full_path)
         if os.path.exists(full_path):
             return full_path
     return None
 
-# --------------------------- UI 핸들러 ---------------------------
-
+# ===================== 이벤트 핸들러 =====================
 def update_submenu(event=None):
     selected = main_combo.get()
     sub_combo['values'] = items.get(selected, [])
@@ -290,26 +270,17 @@ def show_notice():
     notice_win.title("📌 필독 안내")
     notice_win.geometry("550x420")
     root.update()
-    root_x = root.winfo_x()
-    root_y = root.winfo_y()
-    root_w = root.winfo_width()
-    root_h = root.winfo_height()
-    notice_w = 550
-    notice_h = 420
+    root_x = root.winfo_x(); root_y = root.winfo_y()
+    root_w = root.winfo_width(); root_h = root.winfo_height()
+    notice_w = 550; notice_h = 420
     pos_x = root_x + (root_w // 2) - (notice_w // 2)
     pos_y = root_y + (root_h // 2) - (notice_h // 2)
     notice_win.geometry(f"{notice_w}x{notice_h}+{pos_x}+{pos_y}")
     notice_win.grab_set()
-    tk.Label(
-        notice_win, text=notice_text, font=("Helvetica", 12),
-        justify="left", wraplength=520
-    ).pack(padx=10, pady=10)
-    tk.Button(
-        notice_win, text="확인", command=notice_win.destroy, font=("Helvetica", 12)
-    ).pack(pady=10)
+    tk.Label(notice_win, text=notice_text, font=("Helvetica", 12), justify="left", wraplength=520).pack(padx=10, pady=10)
+    tk.Button(notice_win, text="확인", command=notice_win.destroy, font=("Helvetica", 12)).pack(pady=10)
 
-# --------------------------- UI 구성 ---------------------------
-
+# ===================== UI 구성 =====================
 root = tk.Tk()
 root.title("협력사 발주 프로그램")
 root.geometry("700x700")
@@ -334,7 +305,6 @@ dealer_combo.pack(side="left", padx=10)
 
 item_frame = tk.Frame(root, bg="#f0f2f5", pady=10)
 item_frame.pack(fill="x", padx=20)
-
 widgets = [
     ("카테고리 선택", ttk.Combobox(item_frame, values=main_categories, width=30, state="readonly")),
     ("세부 품목", ttk.Combobox(item_frame, width=30, state="readonly")),
@@ -342,7 +312,6 @@ widgets = [
 ]
 main_combo, sub_combo, qty_entry = [w[1] for w in widgets]
 qty_entry.delete(0, "end"); qty_entry.insert(0, "1")
-
 for i, (label, widget) in enumerate(widgets):
     ttk.Label(item_frame, text=label).grid(row=i, column=0, sticky="w", pady=5)
     widget.grid(row=i, column=1, padx=10, pady=5)
@@ -360,7 +329,6 @@ cart_tree.heading("수량", text="수량")
 cart_tree.column("품목", width=400)
 cart_tree.column("수량", width=100, anchor="center")
 cart_tree.pack(fill="both", expand=True, pady=5)
-
 cart_tree.bind("<Double-1>", open_item_image)
 
 btn_frame = tk.Frame(root, bg="#f0f2f5", pady=10)
