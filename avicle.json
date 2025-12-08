@@ -1,4 +1,8 @@
 {
     "Referral code": "5555",
-    "members": {}
+    "members": {
+        "123": {
+            "pw": "123"
+        }
+    }
 }
