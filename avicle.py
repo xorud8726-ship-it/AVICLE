@@ -31,7 +31,7 @@ item_images = {
     "4P 커넥터 100PCS (암,숫)": "4pconnet", "하네스 핀 KET 암,숫 100PCS": "ket", "하네스 핀 AMP 암,숫 100PCS": "ket",
     "Y자 커넥터 50PCS": "4pY", "전원케이블": "MAINPOWER", "음악반응 스위치": "MUSICBUTTON",
     "3m 양면 테이프(회색)": "3M", "반사 테이프": "bansa",
-    "아크릴 전용 3M 수광 테이프(투명) 5mm": "SOOKWANG", "아크릴 전용 3M 수광 테이프(투명) 3mm": "SOOKWANG",
+    "아크릴 전용 3M 수광 테이프(투명) 5mm": "SOOKWANG", "아크рил 전용 3M 수광 테이프(투명) 3mm": "SOOKWANG",
     "풋등 RGB 롤바": "RGBRALL", "풋등 무빙 롤바": "MOVINGRALL", "RGB 단발 LED": "RGBONESHOT",
     "핸들 리모컨 5.1K 저항": "5.1K", "퓨즈 10A": "FUSE10A",
     "벤풍구 1열 (스팅어)": "STINGERAIRVENT1", "벤풍구 2열 (스팅어)": "STINGERAIRVENT2",
@@ -250,7 +250,6 @@ class OrderApp:
 
         # ---- '전체' 탭 먼저 생성 ----
         self._create_tab(self.notebook, "전체")
-
         # ---- 카테고리 탭 생성 ----
         for cat in items_by_category.keys():
             self._create_tab(self.notebook, cat)
@@ -302,6 +301,9 @@ class OrderApp:
         list_frame.columnconfigure(0, weight=1)
         lb.bind("<<ListboxSelect>>", self.on_product_select)
         lb.bind("<Double-Button-1>", self.on_add_by_double_click)
+        # ↑/↓ 키 네비게이션
+        lb.bind("<Up>", self.on_list_up_down)
+        lb.bind("<Down>", self.on_list_up_down)
         self.tab_listboxes[title] = lb
 
     # ---- 장바구니 ----
@@ -314,14 +316,28 @@ class OrderApp:
         ttk.Label(header, text="🛒 장바구니", style="Header.TLabel").pack(side="left")
         ttk.Button(header, text="선택 항목 삭제", command=self.remove_selected).pack(side="right")
 
-        self.cart_tree = ttk.Treeview(card, columns=("item", "qty"), show="headings", height=7)
+        # 스크롤 가능한 테이블 프레임
+        table_frame = ttk.Frame(card, style="Card.TFrame")
+        table_frame.pack(fill="both", expand=True, pady=(6, 0))
+
+        self.cart_tree = ttk.Treeview(table_frame, columns=("item", "qty"), show="headings", height=7)
         self.cart_tree.heading("item", text="품목")
         self.cart_tree.heading("qty", text="수량")
         self.cart_tree.column("item", width=520, anchor="w")
         self.cart_tree.column("qty", width=80, anchor="center")
-        self.cart_tree.pack(fill="both", expand=True, pady=(6, 0))
 
-        # Delete 키 → 경고 없이 삭제, 중복 호출 방지 위해 "break" 반환
+        yscroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.cart_tree.yview)
+        xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.cart_tree.xview)
+        self.cart_tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+
+        self.cart_tree.grid(row=0, column=0, sticky="nsew")
+        yscroll.grid(row=0, column=1, sticky="ns")
+        xscroll.grid(row=1, column=0, sticky="ew")
+
+        table_frame.rowconfigure(0, weight=1)
+        table_frame.columnconfigure(0, weight=1)
+
+        # Delete 키 → 조용히 삭제
         def _on_delete(event):
             self.remove_selected(silent_if_empty=True)
             return "break"
@@ -330,7 +346,7 @@ class OrderApp:
     # ---- 단축키 ----
     def bind_shortcuts(self):
         self.root.bind("<Return>", lambda e: self.add_to_cart())
-        # 전역 Delete 바인딩 제거 → 이중 호출 방지
+        # 전역 Delete 바인딩 없음
 
     # ---- 검색/탭 갱신(전체 적용) ----
     def refresh_all_tabs_list(self):
@@ -354,6 +370,34 @@ class OrderApp:
                     continue
                 lb.insert("end", name)
 
+        # 활성 탭: 선택 없으면 0번 자동 선택 + 미리보기 갱신
+        active = self.active_category()
+        lb_active = self.tab_listboxes.get(active)
+        if lb_active and lb_active.size() > 0 and not lb_active.curselection():
+            lb_active.selection_set(0)
+            lb_active.activate(0)
+            lb_active.see(0)
+            self.on_product_select()
+
+    # ---- 리스트 키 네비게이션 ----
+    def on_list_up_down(self, event):
+        lb: tk.Listbox = event.widget
+        size = lb.size()
+        if size == 0:
+            return "break"
+        sel = lb.curselection()
+        idx = sel[0] if sel else -1
+        if event.keysym == "Up":
+            new = max(0, (idx if idx != -1 else 0) - 1)
+        else:  # Down
+            new = min(size - 1, (idx if idx != -1 else -1) + 1)
+        lb.selection_clear(0, "end")
+        lb.selection_set(new)
+        lb.activate(new)
+        lb.see(new)
+        self.on_product_select()
+        return "break"
+
     # ---- 선택 품목 ----
     def active_category(self) -> str:
         idx = self.notebook.index("current")
@@ -367,7 +411,6 @@ class OrderApp:
             return None
         text = lb.get(sel[0])
         if cat == "전체":
-            # 형식: "[카테고리] 품목명"
             try:
                 return text.split("] ", 1)[1]
             except Exception:
@@ -469,8 +512,7 @@ class OrderApp:
         sel = self.cart_tree.selection()
         if not sel:
             if silent_if_empty:
-                return  # 키 삭제 시 경고 없음
-            # 버튼 클릭 시도에도 경고 원치 않으면 다음 줄 제거 유지
+                return
             return
         for iid in sel:
             self.cart_tree.delete(iid)
