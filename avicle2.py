@@ -17,205 +17,101 @@ CONFIG_FILE = "config.ini"
 TOKEN = "7895331234:AAG9ge6GGBg0plHb7axWcwSwIgSNG9gWvuY"
 CHAT_ID = "-1003315436286"
 
-# -------------------- 이미지 매핑 --------------------
-item_images = {
-    "RGB 110cm": "rgb110",
-    "RGB 90cm": "rgb90",
-    "무빙 110cm": "moving110",
-    "무빙 90cm": "moving90",
-    "순정연동 RGB 모듈 1개 세트": "rgb110.jpg",
-    "순정연동 SE 모듈 1개 세트": "se",
-    "순정연동 V4 모듈 1개 세트": "rgb110.jpg",
-    "RGB 블루투스 모듈(하우동)": "haodeng",
-    "유니버셜 se 모듈 1개 세트": "seset",
-    "순정연동 블루투스 모듈 1개 단품": "uni",
-    "순정연동 RGB 모듈 1개 단품": "rgbb",
-    "순정연동 SE 모듈 1개 단품": "see",
-    "무빙 50cm": "moving50",
-    "무빙 30cm": "moving30",
-    "무빙 15cm": "led",
-    "스피커 아크릴 (1열) 2PCS": "tmvlzj",
-    "(토레스)스피커 아크릴 (1열) 2PCS": "xhfptm",
-    "RGB 풋등 아크릴 1대분 4PCS": "foot",
-    "무빙 풋등 아크릴 1대분 4PCS": "foot",
-    "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리": "ekdldjf",
-    "다이얼 아크릴 NQ5": "ekdldjf",
-    "다이얼 아크릴 구형 KA4": "ekdldjf",
-    "다이얼 아크릴 DL3(페리)": "ekdldjf",
-    "컵홀더 (날개)(LED없음)": "cupwing",
-    "4P 커넥터 100PCS (암,숫)": "4pconnet",
-    "하네스 핀 KET 암,숫 100PCS": "ket",
-    "하네스 핀 AMP 암,숫 100PCS": "ket",
-    "Y자 커넥터 1PCS": "4pY",
-    "전원케이블": "MAINPOWER",
-    "음악반응 스위치": "MUSICBUTTON",
-    "3m 양면 테이프(회색)": "3M",
-    "반사 테이프": "bansa",
-    "아크릴 전용 3M 수광 테이프(투명) 5mm": "SOOKWANG",
-    "아크릴 전용 3M 수광 테이프(투명) 3mm": "SOOKWANG",
-    "풋등 RGB 롤바": "RGBRALL",
-    "풋등 무빙 롤바": "MOVINGRALL",
-    "RGB 단발 LED": "RGBONESHOT",
-    "핸들 리모컨 5.1K 저항": "5.1K",
-    "퓨즈 10A": "FUSE10A",
-    "벤풍구 1열 (스팅어)": "STINGERAIRVENT1",
-    "벤풍구 2열 (스팅어)": "STINGERAIRVENT2",
-    "RGB 스피커 2개 1SET": "speaker",
-    "무빙 스피커 2개 1SET": "speaker",
-    "RGB 풋등 1열 (2개)": "rgbfoot",
-    "RGB 풋등 2열 (2개)": "rgbfoot2",
-    "무빙 풋등 1열 (2개)": "movingfoot1",
-    "무빙 풋등 2열 (2개)": "movingfoot2",
+# -------------------- 세트 규칙 --------------------
+set_rules = {
+    "순정연동 RGB 모듈 1개 세트": ["순정연동 RGB 모듈 1개 단품", "RGB 110cm", "RGB 90cm 4개"],
+    "순정연동 SE 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
+    "순정연동 V4 모듈 1개 세트": ["순정연동 V4 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
+    "유니버셜 se 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "순정연동 블루투스 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
 }
 
-# -------------------- 단가표 --------------------
-item_price = {
-    "RGB 110cm": 30000,
-    "RGB 90cm": 27000,
-    "무빙 110cm": 40000,
-    "무빙 90cm": 34000,
-    "순정연동 RGB 모듈 1개 세트": 198000,
-    "순정연동 SE 모듈 1개 세트": 309000,
-    "순정연동 V4 모듈 1개 세트": 0,  # 미등록가 → 0
-    "RGB 블루투스 모듈(하우동)": 20000,
-    "유니버셜 se 모듈 1개 세트": 369000,
-    "순정연동 블루투스 모듈 1개 단품": 55000,
-    "순정연동 RGB 모듈 1개 단품": 65000,
-    "순정연동 SE 모듈 1개 단품": 150000,
-    "유니버셜 se 모듈 1개 단품": 200000,
-    "무빙 50cm": 20000,
-    "무빙 30cm": 16500,
-    "무빙 15cm": 12000,
-    "스피커 아크릴 (1열) 2PCS": 15000,
-    "(토레스)스피커 아크릴 (1열) 2PCS": 14000,
-    "RGB 풋등 아크릴 1대분 4PCS": 1650,
-    "무빙 풋등 아크릴 1대분 4PCS": 2400,
-    "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리": 15000,
-    "다이얼 아크릴 NQ5": 15000,
-    "다이얼 아크릴 구형 KA4": 15000,
-    "다이얼 아크릴 DL3(페리)": 15000,
-    "컵홀더 (날개)(LED없음)": 35000,
-    "4P 커넥터 100PCS (암,숫)": 35000,
-    "하네스 핀 KET 암,숫 100PCS": 60000,
-    "하네스 핀 AMP 암,숫 100PCS": 120000,
-    "Y자 커넥터 1PCS": 3000,
-    "전원케이블": 35000,
-    "음악반응 스위치": 15000,
-    "3m 양면 테이프(회색)": 38000,
-    "반사 테이프": 22000,
-    "아크릴 전용 3M 수광 테이프(투명) 5mm": 2000,
-    "아크릴 전용 3M 수광 테이프(투명) 3mm": 1500,
-    "풋등 RGB 롤바": 28000,
-    "풋등 무빙 롤바": 44000,
-    "RGB 단발 LED": 10000,
-    "핸들 리모컨 5.1K 저항": 1000,
-    "퓨즈 10A": 2000,
-    "벤풍구 1열 (스팅어)": 130000,
-    "벤풍구 2열 (스팅어)": 95000,
-    "RGB 스피커 2개 1SET": 55000,
-    "무빙 스피커 2개 1SET": 66000,
-    "RGB 풋등 1열 (2개)": 15000,
-    "RGB 풋등 2열 (2개)": 20000,
-    "무빙 풋등 1열 (2개)": 15000,
-    "무빙 풋등 2열 (2개)": 20000,
-    # 누락 가능 항목 예: "카식스 무빙 블루투스 모듈" 등은 아래에서 자동 0 등록
+# -------------------- 단일 카탈로그 (이름 ➜ {category, image, price}) --------------------
+# image: ./avicle/<image>.(jpg|jpeg|png) 자동 탐색
+ITEM_CATALOG = {
+    # 모듈 (세트,단품)
+    "RGB 블루투스 모듈(하우동)": {"category": "모듈 (세트,단품)", "image": "haodeng", "price": 20000},
+    "순정연동 RGB 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 198000},
+    "순정연동 SE 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "se", "price": 309000},
+    "순정연동 V4 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 0},
+    "유니버셜 se 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "seset", "price": 369000},
+    "순정연동 블루투스 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "uni", "price": 55000},
+    "순정연동 V4 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "V44", "price": 0},
+    "순정연동 RGB 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "rgbb", "price": 65000},
+    "순정연동 SE 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "see", "price": 150000},
+    "카식스 무빙 블루투스 모듈": {"category": "모듈 (세트,단품)", "image": None, "price": 0},
+
+    # LED (RGB/무빙)
+    "RGB 110cm": {"category": "LED (RGB/무빙)", "image": "rgb110", "price": 30000},
+    "RGB 90cm": {"category": "LED (RGB/무빙)", "image": "rgb90", "price": 27000},
+    "무빙 110cm": {"category": "LED (RGB/무빙)", "image": "moving110", "price": 40000},
+    "무빙 90cm": {"category": "LED (RGB/무빙)", "image": "moving90", "price": 34000},
+    "무빙 50cm": {"category": "LED (RGB/무빙)", "image": "moving50", "price": 20000},
+    "무빙 30cm": {"category": "LED (RGB/무빙)", "image": "moving30", "price": 16500},
+    "무빙 15cm": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},
+    "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},  # 표시용 별칭
+
+    # 아크릴 & 몰딩
+    "스피커 아크릴 (1열) 2PCS": {"category": "아크릴 & 몰딩", "image": "tmvlzj", "price": 15000},
+    "(토레스)스피커 아크릴 (1열) 2PCS": {"category": "아크릴 & 몰딩", "image": "xhfptm", "price": 14000},
+    "RGB 풋등 아크릴 1대분 4PCS": {"category": "아크릴 & 몰딩", "image": "foot", "price": 1650},
+    "무빙 풋등 아크릴 1대분 4PCS": {"category": "아크릴 & 몰딩", "image": "foot", "price": 2400},
+    "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
+    "다이얼 아크릴 NQ5": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
+    "다이얼 아크릴 구형 KA4": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
+    "다이얼 아크릴 DL3(페리)": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
+
+    # 컵홀더 윙
+    "컵홀더 (날개)(LED없음)": {"category": "컵홀더 윙", "image": "cupwing", "price": 35000},
+
+    # 배선/커넥터/부자재
+    "4P 커넥터 100PCS (암,숫)": {"category": "배선/커넥터/부자재", "image": "4pconnet", "price": 35000},
+    "하네스 핀 KET 암,숫 100PCS": {"category": "배선/커넥터/부자재", "image": "ket", "price": 60000},
+    "하네스 핀 AMP 암,숫 100PCS": {"category": "배선/커넥터/부자재", "image": "ket", "price": 120000},
+    "Y자 커넥터 1PCS": {"category": "배선/커넥터/부자재", "image": "4pY", "price": 3000},
+    "전원케이블": {"category": "배선/커넥터/부자재", "image": "MAINPOWER", "price": 35000},
+    "음악반응 스위치": {"category": "배선/커넥터/부자재", "image": "MUSICBUTTON", "price": 15000},
+    "3m 양면 테이프(회색)": {"category": "배선/커넥터/부자재", "image": "3M", "price": 38000},
+    "반사 테이프": {"category": "배선/커넥터/부자재", "image": "bansa", "price": 22000},
+    "아크릴 전용 3M 수광 테이프(투명) 5mm": {"category": "배선/커넥터/부자재", "image": "SOOKWANG", "price": 2000},
+    "아크릴 전용 3M 수광 테이프(투명) 3mm": {"category": "배선/커넥터/부자재", "image": "SOOKWANG", "price": 1500},
+    "풋등 RGB 롤바": {"category": "배선/커넥터/부자재", "image": "RGBRALL", "price": 28000},
+    "풋등 무빙 롤바": {"category": "배선/커넥터/부자재", "image": "MOVINGRALL", "price": 44000},
+    "RGB 단발 LED": {"category": "배선/커넥터/부자재", "image": "RGBONESHOT", "price": 10000},
+    "핸들 리모컨 5.1K 저항": {"category": "배선/커넥터/부자재", "image": "5.1K", "price": 1000},
+    "퓨즈 10A": {"category": "배선/커넥터/부자재", "image": "FUSE10A", "price": 2000},
+    "벤풍구 1열 (스팅어)": {"category": "배선/커넥터/부자재", "image": "STINGERAIRVENT1", "price": 130000},
+    "벤풍구 2열 (스팅어)": {"category": "배선/커넥터/부자재", "image": "STINGERAIRVENT2", "price": 95000},
+
+    # 완제품 세트
+    "RGB 스피커 2개 1SET": {"category": "완제품 세트", "image": "speaker", "price": 55000},
+    "무빙 스피커 2개 1SET": {"category": "완제품 세트", "image": "speaker", "price": 66000},
+    "RGB 풋등 1열 (2개)": {"category": "완제품 세트", "image": "rgbfoot", "price": 15000},
+    "RGB 풋등 2열 (2개)": {"category": "완제품 세트", "image": "rgbfoot2", "price": 20000},
+    "무빙 풋등 1열 (2개)": {"category": "완제품 세트", "image": "movingfoot1", "price": 15000},
+    "무빙 풋등 2열 (2개)": {"category": "완제품 세트", "image": "movingfoot2", "price": 20000},
 }
 
-# -------------------- 카테고리/세트/품목 --------------------
-main_categories = [
+# -------------------- 파생: 카테고리 목록 / 카테고리별 품목명 --------------------
+# 고정 탭 순서:
+TAB_ORDER = [
     "모듈 (세트,단품)",
     "LED (RGB/무빙)",
     "아크릴 & 몰딩",
     "컵홀더 윙",
     "배선/커넥터/부자재",
-    "완제품 세트"
+    "완제품 세트",
 ]
 
-set_rules = {
-    "순정연동 RGB 모듈 1개 세트": ["순정연동 RGB 모듈 1개 단품", "RGB 110cm", "RGB 90cm 4개"],
-    "순정연동 SE 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-    "유니버셜 se 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "순정연동 블루투스 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-}
+# 카테고리별 품목 이름 목록
+items = {}
+for name, meta in ITEM_CATALOG.items():
+    cat = meta.get("category", "기타")
+    items.setdefault(cat, []).append(name)
+for cat in items:
+    items[cat].sort(key=lambda s: s)
 
-items = {
-    "모듈 (세트,단품)": [
-        "RGB 블루투스 모듈(하우동)",
-        "순정연동 RGB 모듈 1개 세트",
-        "순정연동 SE 모듈 1개 세트",
-        "유니버셜 se 모듈 1개 세트",
-        "순정연동 블루투스 모듈 1개 단품",
-        "순정연동 RGB 모듈 1개 단품",
-        "순정연동 SE 모듈 1개 단품",
-        "카식스 무빙 블루투스 모듈",
-    ],
-    "LED (RGB/무빙)": [
-        "RGB 110cm", "RGB 90cm", "무빙 110cm", "무빙 90cm", "무빙 50cm", "무빙 30cm", "무빙 15cm(품절)"
-    ],
-    "아크릴 & 몰딩": [
-        "스피커 아크릴 (1열) 2PCS",
-        "(토레스)스피커 아크릴 (1열) 2PCS",
-        "RGB 풋등 아크릴 1대분 4PCS",
-        "무빙 풋등 아크릴 1대분 4PCS",
-        "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리",
-        "다이얼 아크릴 NQ5",
-        "다이얼 아크릴 구형 KA4",
-        "다이얼 아크릴 DL3(페리)",
-    ],
-    "컵홀더 윙": ["컵홀더 (날개)(LED없음)"],
-    "배선/커넥터/부자재": [
-        "4P 커넥터 100PCS (암,숫)",
-        "하네스 핀 KET 암,숫 100PCS",
-        "하네스 핀 AMP 암,숫 100PCS",
-        "Y자 커넥터 1PCS",
-        "전원케이블",
-        "음악반응 스위치",
-        "3m 양면 테이프(회색)",
-        "반사 테이프",
-        "아크릴 전용 3M 수광 테이프(투명) 5mm",
-        "아크릴 전용 3M 수광 테이프(투명) 3mm",
-        "풋등 RGB 롤바",
-        "풋등 무빙 롤바",
-        "RGB 단발 LED",
-        "핸들 리모컨 5.1K 저항",
-        "퓨즈 10A",
-        "벤풍구 1열 (스팅어)",
-        "벤풍구 2열 (스팅어)",
-    ],
-    "완제품 세트": [
-        "RGB 풋등 1열 (2개)",
-        "RGB 풋등 2열 (2개)",
-        "무빙 풋등 1열 (2개)",
-        "무빙 풋등 2열 (2개)",
-        "RGB 스피커 2개 1SET",
-        "무빙 스피커 2개 1SET",
-    ],
-}
-
-# -------------------- 가격 누락 자동 보완 --------------------
-def _all_item_names():
-    names = set()
-    for cat, lst in items.items():
-        for n in lst:
-            # 품절 표기 제거용 매핑(가격키와 다르면 정규화)
-            if n.endswith("(품절)"):
-                base = n.replace("(품절)", "").strip()
-                names.add(base)
-            names.add(n)
-    for k, lst in set_rules.items():
-        names.add(k)
-        for s in lst:
-            base = s.replace(" 4개", "").replace(" 2개", "").strip()
-            names.add(base)
-    return names
-
-ALL_ITEM_NAMES = _all_item_names()
-# 누락 키 0원으로 등록(계산은 그대로 진행)
-for n in ALL_ITEM_NAMES:
-    # "무빙 15cm(품절)"는 "무빙 15cm" 가격 사용
-    key = n.replace("(품절)", "").strip()
-    if key not in item_price:
-        item_price[key] = 0  # 미등록가는 0으로
-        # 콘솔 안내(조용히): print(f"[INFO] 가격 미등록 → 0원 처리: {key}")
+# 최종 탭 카테고리 목록(정렬 유지)
+main_categories = [c for c in TAB_ORDER if c in items] + [c for c in items if c not in TAB_ORDER]
 
 # -------------------- 설정 저장/불러오기 --------------------
 def load_window_position():
@@ -236,8 +132,10 @@ def save_window_position():
         config.write(f)
 
 # -------------------- 이미지 파일 찾기 --------------------
-def find_image_file(filename):
-    base = os.path.splitext(filename)[0]
+def find_image_file(image_stem_or_path):
+    if not image_stem_or_path:
+        return None
+    base = os.path.splitext(str(image_stem_or_path))[0]
     folder = resource_path(os.path.join("avicle"))
     if not os.path.isdir(folder):
         return None
@@ -253,6 +151,14 @@ def format_won(n):
         return f"{int(n):,}원"
     except Exception:
         return f"{n}원"
+
+def _catalog_price(name: str) -> int:
+    base = name.replace("(품절)", "").strip()
+    return int(ITEM_CATALOG.get(base, {}).get("price", 0))
+
+def _catalog_image(name: str):
+    base = name.replace("(품절)", "").strip()
+    return ITEM_CATALOG.get(base, {}).get("image")
 
 # -------------------- 로직 --------------------
 def update_submenu(event=None):
@@ -288,16 +194,15 @@ def add_to_cart():
     to_add = []
     if item in set_rules:
         for s in set_rules[item]:
-            name = s.replace(" 4개", "").strip()
-            count = 4 if "4개" in s else 1
+            name = s.replace(" 4개", "").replace(" 2개", "").strip()
+            count = 4 if "4개" in s else (2 if "2개" in s else 1)
             to_add.append((name, qty * count))
     else:
-        # 품절 표기 제거 후 가격 조회
         key = item.replace("(품절)", "").strip()
         to_add.append((key, qty))
 
     for name, add_qty in to_add:
-        unit_price = int(item_price.get(name, 0))
+        unit_price = _catalog_price(name)
         amount = unit_price * add_qty
         vat = int(round(amount * 0.1))
         line_total = amount + vat
@@ -407,21 +312,25 @@ def submit_order():
     update_totals()
 
 def open_item_image(event):
-    # 유지(카트 더블클릭 → 원본 이미지 열기)
     sel = cart_tree.selection()
     if not sel:
         return
     name = cart_tree.item(sel[0], "values")[0]
-    filename = item_images.get(name)
-    if not filename:
+    image_key = _catalog_image(name)
+    if not image_key:
         messagebox.showinfo("이미지 없음", "이미지가 없습니다.")
         return
-    filepath = find_image_file(filename)
+    filepath = find_image_file(image_key)
     if not filepath:
         messagebox.showinfo("이미지 없음", "이미지 파일을 찾을 수 없습니다.")
         return
     try:
-        os.startfile(filepath)
+        if sys.platform.startswith("win"):
+            os.startfile(filepath)  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            os.system(f'open "{filepath}"')
+        else:
+            os.system(f'xdg-open "{filepath}"')
     except Exception as e:
         messagebox.showerror("오류", f"이미지를 열 수 없습니다.\n{e}")
 
