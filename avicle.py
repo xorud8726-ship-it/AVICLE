@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sys, os, time, datetime, requests, configparser, subprocess, webbrowser
+from typing import Dict, List, Tuple, Optional
 
 # Optional Pillow for JPG/PNG preview
 try:
@@ -14,35 +15,130 @@ CONFIG_FILE = "config.ini"
 TOKEN = "7895331234:AAG9ge6GGBg0plHb7axWcwSwIgSNG9gWvuY"
 CHAT_ID = "-1003315436286"
 
-item_images = {
-    "RGB 110cm": "led", "RGB 90cm": "led", "무빙 110cm": "led", "무빙 90cm": "led",
-    "순정연동 RGB 모듈 1개 세트": "rgb110.jpg", "순정연동 SE 모듈 1개 세트": "rgb110.jpg", "순정연동 V4 모듈 1개 세트": "rgb110.jpg",
-    "RGB 블루투스 모듈(하우동)": "haodeng", "카식스 무빙 블루투스 모듈": "carsix",
-    "유니버셜 se 모듈 1개 세트": "uni", "순정연동 블루투스 모듈 1개 단품": "uni",
-    "순정연동 RGB 모듈 1개 단품": "rgb", "순정연동 SE 모듈 1개 단품": "se",
-    "순정연동 V4 모듈 1개 단품": "v4", "유니버셜 se 모듈 1개 단품": "seset",
-    "무빙 50cm": "led", "무빙 30cm": "led", "무빙 15cm": "led",
-    "스피커 아크릴 (1열) 2PCS": "tmvlzj", "(토레스)스피커 아크릴 (1열) 2PCS": "xhfptm",
-    "RGB 풋등 아크릴 1대분 4PCS": "foot", "무빙 풋등 아크릴 1대분 4PCS": "foot",
-    "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리": "ekdldjf", "다이얼 아크릴 NQ5": "ekdldjf",
-    "다이얼 아크릴 구형 KA4": "ekdldjf", "다이얼 아크릴 DL3(페리)": "ekdldjf",
-    "스팅어 벤풍구 아크릴 1열": "Stinger1", "스팅어 벤풍구 아크릴 2열": "stinger2",
-    "컵홀더 (날개)(LED없음)": "cupwing",
-    "4P 커넥터 100PCS (암,숫)": "4pconnet", "하네스 핀 KET 암,숫 100PCS": "ket", "하네스 핀 AMP 암,숫 100PCS": "ket",
-    "Y자 커넥터 50PCS": "4pY", "전원케이블": "MAINPOWER", "음악반응 스위치": "MUSICBUTTON",
-    "3m 양면 테이프(회색)": "3M", "반사 테이프": "bansa",
-    "아크릴 전용 3M 수광 테이프(투명) 5mm": "SOOKWANG", "아크рил 전용 3M 수광 테이프(투명) 3mm": "SOOKWANG",
-    "풋등 RGB 롤바": "RGBRALL", "풋등 무빙 롤바": "MOVINGRALL", "RGB 단발 LED": "RGBONESHOT",
-    "핸들 리모컨 5.1K 저항": "5.1K", "퓨즈 10A": "FUSE10A",
-    "벤풍구 1열 (스팅어)": "STINGERAIRVENT1", "벤풍구 2열 (스팅어)": "STINGERAIRVENT2",
-    "RGB 스피커 2개 1SET": "speaker", "무빙 스피커 2개 1SET": "speaker",
-    "쏘렌토MQ4 RGB 전면": "mq4center", "쏘렌토MQ4 무빙 전면": "mq4center",
-    "신형팰리세이드 RGB 전면": "palisadedoor", "신형팰리세이드 무빙 전면": "thenewpalisade",
-    "신형,구형 팰리세이드 RGB 도어": "palisadedoor", "신형,구형 팰리세이드 무빙 도어": "palisadedoor",
-    "그랜져GN7 RGB 전면": "gn7center", "그랜져GN7 무빙 전면": "gn7center",
-    "그랜져GN7 RGB 도어": "gn7door", "그랜져GN7 무빙 도어": "gn7door",
-    "RGB 풋등 1열 (2개)": "rgbfoot", "RGB 풋등 2열 (2개)": "rgbfoot",
-    "무빙 풋등 1열 (2개)": "movingfoot", "무빙 풋등 2열 (2개)": "movingfoot",
+# ---------------------------------------------------------------------------
+# 단일 소스: 품목 카탈로그 (품목/카테고리/이미지)
+# - id: 내부 고정 식별자 (이 값은 바꾸지 않는 것을 권장)
+# - name: 화면에 보여줄 품목명 (원하는대로 변경 가능)
+# - category: 탭/검색에 사용할 카테고리명 (변경 가능, 자동 반영)
+# - image: 이미지 파일의 '이름(확장자 제외)' 또는 파일명(확장자 제외).
+#          ./avicle/<image>.(jpg|jpeg|png|gif) 순서로 자동 탐색
+# ---------------------------------------------------------------------------
+ITEMS: List[Dict[str, str]] = [
+    # LED (RGB/무빙)
+    {"id":"rgb_led_110","name":"RGB 110cm","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"rgb_led_90","name":"RGB 90cm","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"moving_led_110","name":"무빙 110cm","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"moving_led_90","name":"무빙 90cm","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"moving_led_50","name":"무빙 50cm","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"moving_led_30","name":"무빙 30cm","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"moving_led_15_soldout","name":"무빙 15cm(품절)","category":"LED (RGB/무빙)","image":"led"},
+
+    # 모듈 (세트,단품)
+    {"id":"haodeng_bt","name":"RGB 블루투스 모듈(하우동)","category":"모듈 (세트,단품)","image":"haodeng"},
+    {"id":"carsix_bt","name":"카식스 무빙 블루투스 모듈","category":"모듈 (세트,단품)","image":"carsix"},
+    {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
+    {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
+    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
+    {"id":"universal_se_set","name":"유니버셜 se 모듈 1개 세트","category":"모듈 (세트,단품)","image":"seset"},
+    {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb"},
+    {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
+    {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
+    {"id":"universal_se_single","name":"유니버셜 1개 단품","category":"모듈 (세트,단품)","image":"uni"},
+    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
+    {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
+    {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
+    {"id":"oem_se_pro_single","name":"순정연동 SE PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
+
+    # 아크릴 & 몰딩
+    {"id":"spk_acrylic_row1","name":"스피커 아크릴 (1열) 2PCS","category":"아크릴 & 몰딩","image":"tmvlzj"},
+    {"id":"spk_acrylic_row1_torres","name":"(토레스)스피커 아크릴 (1열) 2PCS","category":"아크릴 & 몰딩","image":"xhfptm"},
+    {"id":"foot_rgb_acrylic_4pcs","name":"RGB 풋등 아크릴 1대분 4PCS","category":"아크릴 & 몰딩","image":"foot"},
+    {"id":"foot_moving_acrylic_4pcs","name":"무빙 풋등 아크릴 1대분 4PCS","category":"아크릴 & 몰딩","image":"foot"},
+    {"id":"dial_acrylic_mq4_k8_ka4p","name":"다이얼 아크릴 MQ4(페리),K8(페리),KA4페리","category":"아크릴 & 몰딩","image":"ekdldjf"},
+    {"id":"dial_acrylic_nq5","name":"다이얼 아크릴 NQ5","category":"아크릴 & 몰딩","image":"ekdldjf"},
+    {"id":"dial_acrylic_old_ka4","name":"다이얼 아크릴 구형 KA4","category":"아크릴 & 몰딩","image":"ekdldjf"},
+    {"id":"dial_acrylic_dl3_ferry","name":"다이얼 아크릴 DL3(페리)","category":"아크릴 & 몰딩","image":"ekdldjf"},
+    {"id":"stinger_airvent_row1","name":"스팅어 벤풍구 아크릴 1열","category":"아크릴 & 몰딩","image":"Stinger1"},
+    {"id":"stinger_airvent_row2","name":"스팅어 벤풍구 아크릴 2열","category":"아크릴 & 몰딩","image":"stinger2"},
+
+    # 컵홀더 윙
+    {"id":"cupholder_wing","name":"컵홀더 (날개)(LED없음)","category":"컵홀더 윙","image":"cupwing"},
+
+    # 배선/커넥터/부자재
+    {"id":"conn_4p_100","name":"4P 커넥터 100PCS (암,숫)","category":"배선/커넥터/부자재","image":"4pconnet"},
+    {"id":"harness_pin_ket_100","name":"하네스 핀 KET 암,숫 100PCS","category":"배선/커넥터/부자재","image":"ket"},
+    {"id":"harness_pin_amp_100","name":"하네스 핀 AMP 암,숫 100PCS","category":"배선/커넥터/부자재","image":"ket"},
+    {"id":"conn_y_50","name":"Y자 커넥터 50PCS","category":"배선/커넥터/부자재","image":"4pY"},
+    {"id":"power_cable","name":"전원케이블","category":"배선/커넥터/부자재","image":"MAINPOWER"},
+    {"id":"music_switch","name":"음악반응 스위치","category":"배선/커넥터/부자재","image":"MUSICBUTTON"},
+    {"id":"tape_3m_gray","name":"3m 양면 테이프(회색)","category":"배선/커넥터/부자재","image":"3M"},
+    {"id":"tape_reflect","name":"반사 테이프","category":"배선/커넥터/부자재","image":"bansa"},
+    {"id":"tape_sookwang_5mm","name":"아크릴 전용 3M 수광 테이프(투명) 5mm","category":"배선/커넥터/부자재","image":"SOOKWANG"},
+    {"id":"tape_sookwang_3mm","name":"아크릴 전용 3M 수광 테이프(투명) 3mm","category":"배선/커넥터/부자재","image":"SOOKWANG"},
+    {"id":"foot_rgb_rollbar","name":"풋등 RGB 롤바","category":"배선/커넥터/부자재","image":"RGBRALL"},
+    {"id":"foot_moving_rollbar","name":"풋등 무빙 롤바","category":"배선/커넥터/부자재","image":"MOVINGRALL"},
+    {"id":"rgb_one_shot","name":"RGB 단발 LED","category":"배선/커넥터/부자재","image":"RGBONESHOT"},
+    {"id":"steer_remote_5_1k","name":"핸들 리모컨 5.1K 저항","category":"배선/커넥터/부자재","image":"5.1K"},
+    {"id":"fuse_10a","name":"퓨즈 10A","category":"배선/커넥터/부자재","image":"FUSE10A"},
+    {"id":"stinger_airvent1","name":"벤풍구 1열 (스팅어)","category":"배선/커넥터/부자재","image":"STINGERAIRVENT1"},
+    {"id":"stinger_airvent2","name":"벤풍구 2열 (스팅어)","category":"배선/커넥터/부자재","image":"STINGERAIRVENT2"},
+
+    # 완제품 세트
+    {"id":"foot_rgb_row1","name":"RGB 풋등 1열 (2개)","category":"완제품 세트","image":"rgbfoot"},
+    {"id":"foot_rgb_row2","name":"RGB 풋등 2열 (2개)","category":"완제품 세트","image":"rgbfoot"},
+    {"id":"foot_moving_row1","name":"무빙 풋등 1열 (2개)","category":"완제품 세트","image":"movingfoot"},
+    {"id":"foot_moving_row2","name":"무빙 풋등 2열 (2개)","category":"완제품 세트","image":"movingfoot"},
+    {"id":"speaker_rgb_set","name":"RGB 스피커 2개 1SET","category":"완제품 세트","image":"speaker"},
+    {"id":"speaker_moving_set","name":"무빙 스피커 2개 1SET","category":"완제품 세트","image":"speaker"},
+    {"id":"mq4_rgb_front","name":"쏘렌토MQ4 RGB 전면","category":"완제품 세트","image":"mq4center"},
+    {"id":"mq4_moving_front","name":"쏘렌토MQ4 무빙 전면","category":"완제품 세트","image":"mq4center"},
+    {"id":"palisade_rgb_front","name":"신형팰리세이드 RGB 전면","category":"완제품 세트","image":"palisadedoor"},
+    {"id":"palisade_moving_front","name":"신형팰리세이드 무빙 전면","category":"완제품 세트","image":"thenewpalisade"},
+    {"id":"palisade_rgb_door","name":"신형,구형 팰리세이드 RGB 도어","category":"완제품 세트","image":"palisadedoor"},
+    {"id":"palisade_moving_door","name":"신형,구형 팰리세이드 무빙 도어","category":"완제품 세트","image":"palisadedoor"},
+    {"id":"gn7_rgb_front","name":"그랜져GN7 RGB 전면","category":"완제품 세트","image":"gn7center"},
+    {"id":"gn7_moving_front","name":"그랜져GN7 무빙 전면","category":"완제품 세트","image":"gn7center"},
+    {"id":"gn7_rgb_door","name":"그랜져GN7 RGB 도어","category":"완제품 세트","image":"gn7door"},
+    {"id":"gn7_moving_door","name":"그랜져GN7 무빙 도어","category":"완제품 세트","image":"gn7door"},
+]
+
+# 세트 구성 규칙 (id 기반) : "세트ID": [("구성ID", 개수), ...]
+SET_RULES: Dict[str, List[Tuple[str, int]]] = {
+    "oem_rgb_set": [
+        ("oem_rgb_single", 1),
+        ("rgb_led_110", 1),
+        ("rgb_led_90", 4),
+    ],
+    "oem_se_set": [
+        ("oem_se_single", 1),
+        ("moving_led_110", 1),
+        ("moving_led_90", 4),
+    ],
+    "oem_v4_set": [
+        ("oem_v4_single", 1),
+        ("moving_led_110", 1),
+        ("moving_led_90", 4),
+    ],
+    "universal_se_set": [
+        ("universal_se_single", 1),
+        ("oem_se_single", 1),
+        ("moving_led_110", 1),
+        ("moving_led_90", 4),
+    ],
+    "oem_v4_pro_set": [
+        ("oem_v4_pro_single", 1),
+        ("moving_led_110", 1),
+        ("moving_led_90", 4),
+        ("moving_led_50", 2),
+        ("moving_led_30", 2),
+    ],
+    "oem_se_pro_set": [
+        ("oem_se_pro_single", 1),  # 원문에 V4 표기 유지
+        ("moving_led_110", 1),
+        ("moving_led_90", 4),
+        ("moving_led_50", 2),
+        ("moving_led_30", 2),
+    ],
 }
 
 dealers = {
@@ -63,52 +159,26 @@ dealers = {
     "대구 홍스": {"phone": "010-2412-3433", "addr": "대구 동구 율하서로 96 1375 1층"},
 }
 
-items_by_category = {
-    "모듈 (세트,단품)": [
-        "RGB 블루투스 모듈(하우동)", "카식스 무빙 블루투스 모듈",
-        "순정연동 RGB 모듈 1개 세트", "순정연동 SE 모듈 1개 세트",
-        "순정연동 V4 모듈 1개 세트", "유니버셜 se 모듈 1개 세트",
-        "순정연동 블루투스 모듈 1개 단품", "순정연동 RGB 모듈 1개 단품",
-        "순정연동 SE 모듈 1개 단품", "순정연동 V4 모듈 1개 단품", "유니버셜 se 모듈 1개 단품",
-    ],
-    "LED (RGB/무빙)": ["RGB 110cm", "RGB 90cm", "무빙 110cm", "무빙 90cm", "무빙 50cm", "무빙 30cm", "무빙 15cm(품절)"],
-    "아크릴 & 몰딩": [
-        "스피커 아크릴 (1열) 2PCS", "(토레스)스피커 아크릴 (1열) 2PCS",
-        "RGB 풋등 아크릴 1대분 4PCS", "무빙 풋등 아크릴 1대분 4PCS",
-        "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리", "다이얼 아크릴 NQ5",
-        "다이얼 아크릴 구형 KA4", "다이얼 아크릴 DL3(페리)",
-        "스팅어 벤풍구 아크릴 1열", "스팅어 벤풍구 아크릴 2열",
-    ],
-    "컵홀더 윙": ["컵홀더 (날개)(LED없음)"],
-    "배선/커넥터/부자재": [
-        "4P 커넥터 100PCS (암,숫)", "하네스 핀 KET 암,숫 100PCS", "하네스 핀 AMP 암,숫 100PCS",
-        "Y자 커넥터 50PCS", "전원케이블", "음악반응 스위치", "3m 양면 테이프(회색)",
-        "반사 테이프", "아크릴 전용 3M 수광 테이프(투명) 5mm", "아크릴 전용 3M 수광 테이프(투명) 3mm",
-        "풋등 RGB 롤바", "풋등 무빙 롤바", "RGB 단발 LED", "핸들 리모컨 5.1K 저항",
-        "퓨즈 10A", "벤풍구 1열 (스팅어)", "벤풍구 2열 (스팅어)",
-    ],
-    "완제품 세트": [
-        "RGB 풋등 1열 (2개)", "RGB 풋등 2열 (2개)", "무빙 풋등 1열 (2개)", "무빙 풋등 2열 (2개)",
-        "RGB 스피커 2개 1SET", "무빙 스피커 2개 1SET", "쏘렌토MQ4 RGB 전면", "쏘렌토MQ4 무빙 전면",
-        "신형팰리세이드 RGB 전면", "신형팰리세이드 무빙 전면",
-        "신형,구형 팰리세이드 RGB 도어", "신형,구형 팰리세이드 무빙 도어",
-        "그랜져GN7 RGB 전면", "그랜져GN7 무빙 전면", "그랜져GN7 RGB 도어", "그랜져GN7 무빙 도어",
-    ],
-}
+# ---------- 인덱스(단일 소스에서 파생) ----------
+def build_indexes(items: List[Dict[str, str]]):
+    by_id: Dict[str, Dict[str, str]] = {}
+    by_name_to_id: Dict[str, str] = {}
+    categories: Dict[str, List[str]] = {}
+    for it in items:
+        by_id[it["id"]] = it
+        by_name_to_id[it["name"]] = it["id"]
+        categories.setdefault(it["category"], []).append(it["name"])
+    # 카테고리별 품목명 정렬
+    for k in categories:
+        categories[k].sort()
+    return by_id, by_name_to_id, categories
 
-set_rules = {
-    "순정연동 RGB 모듈 1개 세트": ["순정연동 RGB 모듈 1개 단품", "RGB 110cm", "RGB 90cm 4개"],
-    "순정연동 SE 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-    "순정연동 V4 모듈 1개 세트": ["순정연동 V4 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-    "유니버셜 se 모듈 1개 세트": ["유니버셜 se 모듈 1개 단품", "에이비클 어플", "무빙 110cm", "무빙 90cm 4개"],
-    "순정연동 V4 PRO 모듈 1개 세트": ["순정연동 V4 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개", "무빙 50CM 2개", "무빙 30CM 2개"],
-    "순정연동 SE PRO 모듈 1개 세트": ["순정연동 V4 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개", "무빙 50CM 2개", "무빙 30CM 2개"],
-}
+ITEMS_BY_ID, NAME_TO_ID, ITEMS_BY_CATEGORY = build_indexes(ITEMS)
 
 # ---------- 유틸 ----------
 def resource_path(relative_path: str) -> str:
     try:
-        base_path = sys._MEIPASS
+        base_path = sys._MEIPASS  # type: ignore[attr-defined]
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
@@ -130,8 +200,10 @@ def save_window_position(root):
     with open(CONFIG_FILE, "w") as f:
         config.write(f)
 
-def find_image_file(filename: str):
-    name_wo_ext = os.path.splitext(filename)[0]
+def find_image_file(image_stem_or_name: Optional[str]):
+    if not image_stem_or_name:
+        return None
+    name_wo_ext = os.path.splitext(image_stem_or_name)[0]
     image_folder = resource_path(os.path.join("avicle"))
     if not os.path.isdir(image_folder):
         return None
@@ -191,7 +263,7 @@ class OrderApp:
         self._last_preview_path = None
         self.search_var = tk.StringVar()
 
-        self.tab_listboxes: dict[str, tk.Listbox] = {}
+        self.tab_listboxes: Dict[str, tk.Listbox] = {}
         self.build_style()
         self.build_topbar()
         self.build_body_with_tabs()
@@ -248,10 +320,10 @@ class OrderApp:
         self.notebook.pack(fill="both", expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.refresh_all_tabs_list())
 
-        # ---- '전체' 탭 먼저 생성 ----
+        # '전체' 탭
         self._create_tab(self.notebook, "전체")
-        # ---- 카테고리 탭 생성 ----
-        for cat in items_by_category.keys():
+        # 카테고리 탭: 카탈로그로부터 동적 생성
+        for cat in sorted(ITEMS_BY_CATEGORY.keys()):
             self._create_tab(self.notebook, cat)
 
         # 우측: 미리보기
@@ -301,7 +373,6 @@ class OrderApp:
         list_frame.columnconfigure(0, weight=1)
         lb.bind("<<ListboxSelect>>", self.on_product_select)
         lb.bind("<Double-Button-1>", self.on_add_by_double_click)
-        # ↑/↓ 키 네비게이션
         lb.bind("<Up>", self.on_list_up_down)
         lb.bind("<Down>", self.on_list_up_down)
         self.tab_listboxes[title] = lb
@@ -316,7 +387,6 @@ class OrderApp:
         ttk.Label(header, text="🛒 장바구니", style="Header.TLabel").pack(side="left")
         ttk.Button(header, text="선택 항목 삭제", command=self.remove_selected).pack(side="right")
 
-        # 스크롤 가능한 테이블 프레임
         table_frame = ttk.Frame(card, style="Card.TFrame")
         table_frame.pack(fill="both", expand=True, pady=(6, 0))
 
@@ -337,7 +407,6 @@ class OrderApp:
         table_frame.rowconfigure(0, weight=1)
         table_frame.columnconfigure(0, weight=1)
 
-        # Delete 키 → 조용히 삭제
         def _on_delete(event):
             self.remove_selected(silent_if_empty=True)
             return "break"
@@ -346,17 +415,17 @@ class OrderApp:
     # ---- 단축키 ----
     def bind_shortcuts(self):
         self.root.bind("<Return>", lambda e: self.add_to_cart())
-        # 전역 Delete 바인딩 없음
 
-    # ---- 검색/탭 갱신(전체 적용) ----
+    # ---- 검색/탭 갱신 ----
     def refresh_all_tabs_list(self):
         q = self.search_var.get().strip().lower()
         # '전체' 탭
         lb_all = self.tab_listboxes.get("전체")
         if lb_all:
             lb_all.delete(0, "end")
-            for cat, names in items_by_category.items():
-                for name in names:
+            # 전체는 카테고리 이름도 함께 표기
+            for cat in sorted(ITEMS_BY_CATEGORY.keys()):
+                for name in ITEMS_BY_CATEGORY[cat]:
                     if q and q not in name.lower():
                         continue
                     lb_all.insert("end", f"[{cat}] {name}")
@@ -365,12 +434,12 @@ class OrderApp:
             if cat == "전체":
                 continue
             lb.delete(0, "end")
-            for name in items_by_category.get(cat, []):
+            for name in ITEMS_BY_CATEGORY.get(cat, []):
                 if q and q not in name.lower():
                     continue
                 lb.insert("end", name)
 
-        # 활성 탭: 선택 없으면 0번 자동 선택 + 미리보기 갱신
+        # 활성 탭 자동 선택 + 미리보기
         active = self.active_category()
         lb_active = self.tab_listboxes.get(active)
         if lb_active and lb_active.size() > 0 and not lb_active.curselection():
@@ -389,7 +458,7 @@ class OrderApp:
         idx = sel[0] if sel else -1
         if event.keysym == "Up":
             new = max(0, (idx if idx != -1 else 0) - 1)
-        else:  # Down
+        else:
             new = min(size - 1, (idx if idx != -1 else -1) + 1)
         lb.selection_clear(0, "end")
         lb.selection_set(new)
@@ -403,7 +472,7 @@ class OrderApp:
         idx = self.notebook.index("current")
         return self.notebook.tab(idx, "text")
 
-    def get_selected_product_name(self):
+    def get_selected_product_name(self) -> Optional[str]:
         cat = self.active_category()
         lb = self.tab_listboxes[cat]
         sel = lb.curselection()
@@ -433,12 +502,13 @@ class OrderApp:
         self._render_image(self._last_preview_path)
 
     def show_preview(self, name: str):
-        filename = item_images.get(name)
-        if not filename:
+        item_id = NAME_TO_ID.get(name)
+        if not item_id:
             self.preview.config(text="이미지 없음", image="")
             self._photo_cache = None; self._last_preview_path = None
             return
-        path = find_image_file(filename)
+        image_stem = ITEMS_BY_ID[item_id].get("image")
+        path = find_image_file(image_stem)
         if not path:
             self.preview.config(text="이미지 없음", image="")
             self._photo_cache = None; self._last_preview_path = None
@@ -474,15 +544,14 @@ class OrderApp:
         open_file_cross_platform(self._last_preview_path)
 
     # ---- 카트/세트 ----
-    def expand_set_items(self, item_name: str, qty: int):
-        if item_name in set_rules:
-            expanded = []
-            for set_item in set_rules[item_name]:
-                name = set_item.replace(" 4개", "").replace(" 2개", "").replace(" 2개)", ")").strip()
-                count = 4 if "4개" in set_item else (2 if "2개" in set_item else 1)
-                expanded.append((name, qty * count))
+    def expand_set_items(self, item_id: str, qty: int) -> List[Tuple[str, int]]:
+        # id 기반으로 세트 확장. 세트가 아니면 자기 자신 반환.
+        if item_id in SET_RULES:
+            expanded: List[Tuple[str, int]] = []
+            for child_id, count in SET_RULES[item_id]:
+                expanded.append((child_id, qty * count))
             return expanded
-        return [(item_name, qty)]
+        return [(item_id, qty)]
 
     def add_to_cart(self):
         name = self.get_selected_product_name()
@@ -496,8 +565,15 @@ class OrderApp:
         except Exception:
             messagebox.showwarning("오류", "수량은 1 이상의 숫자로 입력하세요.")
             return
-        for add_name, add_qty in self.expand_set_items(name, qty):
-            self._merge_cart(add_name, add_qty)
+
+        item_id = NAME_TO_ID.get(name)
+        if not item_id:
+            messagebox.showwarning("오류", "알 수 없는 품목입니다.")
+            return
+
+        for add_id, add_qty in self.expand_set_items(item_id, qty):
+            display_name = ITEMS_BY_ID.get(add_id, {}).get("name", add_id)
+            self._merge_cart(display_name, add_qty)
 
     def _merge_cart(self, name: str, add_qty: int):
         for iid in self.cart_tree.get_children():
@@ -582,6 +658,9 @@ class OrderApp:
         self.root.destroy()
 
 def main():
+    global ITEMS_BY_ID, NAME_TO_ID, ITEMS_BY_CATEGORY
+    # 혹시 외부에서 ITEMS 수정 후 호출 시 인덱스 재생성
+    ITEMS_BY_ID, NAME_TO_ID, ITEMS_BY_CATEGORY = build_indexes(ITEMS)
     root = tk.Tk()
     app = OrderApp(root)
     root.mainloop()
