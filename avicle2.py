@@ -46,15 +46,6 @@ ITEM_CATALOG = {
     "무빙 30cm": {"category": "LED (RGB/무빙)", "image": "moving30", "price": 16500},
     "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},
 
-    # 아크릴 & 몰딩
-    "스피커 아크릴 (1열) 2PCS": {"category": "아크릴 & 몰딩", "image": "tmvlzj", "price": 15000},
-    "(토레스)스피커 아크릴 (1열) 2PCS": {"category": "아크릴 & 몰딩", "image": "xhfptm", "price": 14000},
-    "RGB 풋등 아크릴 1대분 4PCS": {"category": "아크릴 & 몰딩", "image": "foot", "price": 1650},
-    "무빙 풋등 아크릴 1대분 4PCS": {"category": "아크릴 & 몰딩", "image": "foot", "price": 2400},
-    "다이얼 아크릴 MQ4(페리),K8(페리),KA4페리": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
-    "다이얼 아크릴 NQ5": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
-    "다이얼 아크릴 구형 KA4": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
-    "다이얼 아크릴 DL3(페리)": {"category": "아크릴 & 몰딩", "image": "ekdldjf", "price": 15000},
 
     # 컵홀더 윙
     "컵홀더 (날개)(LED없음)": {"category": "컵홀더 윙", "image": "cupwing", "price": 35000},
@@ -453,4 +444,5 @@ if main_categories:
 update_totals()
 
 root.mainloop()
+
 
