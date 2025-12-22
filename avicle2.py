@@ -32,13 +32,10 @@ ITEM_CATALOG = {
     "RGB 블루투스 모듈(하우동)": {"category": "모듈 (세트,단품)", "image": "haodeng", "price": 20000},
     "순정연동 RGB 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 198000},
     "순정연동 SE 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "se", "price": 309000},
-    "순정연동 V4 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 0},
     "유니버셜 se 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "seset", "price": 369000},
     "순정연동 블루투스 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "uni", "price": 55000},
-    "순정연동 V4 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "V44", "price": 0},
     "순정연동 RGB 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "rgbb", "price": 65000},
     "순정연동 SE 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "see", "price": 150000},
-    "카식스 무빙 블루투스 모듈": {"category": "모듈 (세트,단품)", "image": None, "price": 0},
 
     # LED (RGB/무빙)
     "RGB 110cm": {"category": "LED (RGB/무빙)", "image": "rgb110", "price": 30000},
@@ -47,8 +44,7 @@ ITEM_CATALOG = {
     "무빙 90cm": {"category": "LED (RGB/무빙)", "image": "moving90", "price": 34000},
     "무빙 50cm": {"category": "LED (RGB/무빙)", "image": "moving50", "price": 20000},
     "무빙 30cm": {"category": "LED (RGB/무빙)", "image": "moving30", "price": 16500},
-    "무빙 15cm": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},
-    "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},  # 표시용 별칭
+    "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},
 
     # 아크릴 & 몰딩
     "스피커 아크릴 (1열) 2PCS": {"category": "아크릴 & 몰딩", "image": "tmvlzj", "price": 15000},
@@ -457,3 +453,4 @@ if main_categories:
 update_totals()
 
 root.mainloop()
+
