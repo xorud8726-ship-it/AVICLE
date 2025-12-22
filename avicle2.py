@@ -83,7 +83,6 @@ ITEM_CATALOG = {
 TAB_ORDER = [
     "모듈 (세트,단품)",
     "LED (RGB/무빙)",
-    "아크릴 & 몰딩",
     "컵홀더 윙",
     "배선/커넥터/부자재",
     "완제품 세트",
@@ -444,5 +443,6 @@ if main_categories:
 update_totals()
 
 root.mainloop()
+
 
 
