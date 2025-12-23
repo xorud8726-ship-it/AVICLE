@@ -35,7 +35,6 @@ ITEMS: List[Dict[str, str]] = [
 
     # 모듈 (세트,단품)
     {"id":"haodeng_bt","name":"RGB 블루투스 모듈(하우동)","category":"모듈 (세트,단품)","image":"haodeng"},
-    {"id":"carsix_bt","name":"카식스 무빙 블루투스 모듈","category":"모듈 (세트,단품)","image":"carsix"},
     {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
     {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
     {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
@@ -43,7 +42,7 @@ ITEMS: List[Dict[str, str]] = [
     {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb"},
     {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
     {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
-    {"id":"universal_se_single","name":"유니버셜 1개 단품","category":"모듈 (세트,단품)","image":"uni"},
+    {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni"},
     {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
     {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
     {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
@@ -667,3 +666,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
