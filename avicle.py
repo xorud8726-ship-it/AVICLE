@@ -45,7 +45,7 @@ ITEMS: List[Dict[str, str]] = [
     {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni"},
     {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":""},
     {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
-    {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
+    {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4"},
     {"id":"oem_se_pro_single","name":"순정연동 SE PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
 
     # 아크릴 & 몰딩
@@ -666,5 +666,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
