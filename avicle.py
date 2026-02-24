@@ -37,13 +37,13 @@ ITEMS: List[Dict[str, str]] = [
     {"id":"haodeng_bt","name":"RGB 블루투스 모듈(하우동)","category":"모듈 (세트,단품)","image":"haodeng"},
     {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
     {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
-    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
+    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":"rgb110"},
     {"id":"universal_se_set","name":"유니버셜 se 모듈 1개 세트","category":"모듈 (세트,단품)","image":"seset"},
     {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb"},
     {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
-    {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
+    {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4"},
     {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni"},
-    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
+    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":""},
     {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
     {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"v4"},
     {"id":"oem_se_pro_single","name":"순정연동 SE PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
@@ -666,4 +666,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
