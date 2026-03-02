@@ -16,89 +16,85 @@ TOKEN = "7895331234:AAG9ge6GGBg0plHb7axWcwSwIgSNG9gWvuY"
 CHAT_ID = "-1003315436286"
 
 # ---------------------------------------------------------------------------
-# 단일 소스: 품목 카탈로그 (품목/카테고리/이미지)
-# - id: 내부 고정 식별자 (이 값은 바꾸지 않는 것을 권장)
-# - name: 화면에 보여줄 품목명 (원하는대로 변경 가능)
-# - category: 탭/검색에 사용할 카테고리명 (변경 가능, 자동 반영)
-# - image: 이미지 파일의 '이름(확장자 제외)' 또는 파일명(확장자 제외).
-#          ./avicle/<image>.(jpg|jpeg|png|gif) 순서로 자동 탐색
+# 단일 소스: 품목 카탈로그 (품목/카테고리/이미지/가격)
+# - price: 공급가(부가세 미포함) 기준 임시 설정
 # ---------------------------------------------------------------------------
 ITEMS: List[Dict[str, str]] = [
     # LED (RGB/무빙)
-    {"id":"rgb_led_110","name":"RGB 110cm","category":"LED (RGB/무빙)","image":"led"},
-    {"id":"rgb_led_90","name":"RGB 90cm","category":"LED (RGB/무빙)","image":"led"},
-    {"id":"moving_led_110","name":"무빙 110cm","category":"LED (RGB/무빙)","image":"led"},
-    {"id":"moving_led_90","name":"무빙 90cm","category":"LED (RGB/무빙)","image":"led"},
-    {"id":"moving_led_50","name":"무빙 50cm","category":"LED (RGB/무빙)","image":"led"},
-    {"id":"moving_led_30","name":"무빙 30cm","category":"LED (RGB/무빙)","image":"led"},
-    {"id":"moving_led_15_soldout","name":"무빙 15cm(품절)","category":"LED (RGB/무빙)","image":"led"},
+    {"id":"rgb_led_110","name":"RGB 110cm","category":"LED (RGB/무빙)","image":"led", "price": "15000"},
+    {"id":"rgb_led_90","name":"RGB 90cm","category":"LED (RGB/무빙)","image":"led", "price": "13000"},
+    {"id":"moving_led_110","name":"무빙 110cm","category":"LED (RGB/무빙)","image":"led", "price": "25000"},
+    {"id":"moving_led_90","name":"무빙 90cm","category":"LED (RGB/무빙)","image":"led", "price": "22000"},
+    {"id":"moving_led_50","name":"무빙 50cm","category":"LED (RGB/무빙)","image":"led", "price": "18000"},
+    {"id":"moving_led_30","name":"무빙 30cm","category":"LED (RGB/무빙)","image":"led", "price": "15000"},
+    {"id":"moving_led_15_soldout","name":"무빙 15cm(품절)","category":"LED (RGB/무빙)","image":"led", "price": "0"},
 
     # 모듈 (세트,단품)
-    {"id":"haodeng_bt","name":"RGB 블루투스 모듈(하우동)","category":"모듈 (세트,단품)","image":"haodeng"},
-    {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
-    {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110"},
-    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":"rgb110"},
-    {"id":"universal_se_set","name":"유니버셜 se 모듈 1개 세트","category":"모듈 (세트,단품)","image":"seset"},
-    {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb"},
-    {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
-    {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4"},
-    {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni"},
-    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":""},
-    {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":""},
-    {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4"},
-    {"id":"oem_se_pro_single","name":"순정연동 SE PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se"},
+    {"id":"haodeng_bt","name":"RGB 블루투스 모듈(하우동)","category":"모듈 (세트,단품)","image":"haodeng", "price": "40000"},
+    {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110", "price": "120000"},
+    {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110", "price": "150000"},
+    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":"rgb110", "price": "0"},
+    {"id":"universal_se_set","name":"유니버셜 se 모듈 1개 세트","category":"모듈 (세트,단품)","image":"seset", "price": "180000"},
+    {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb", "price": "50000"},
+    {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se", "price": "70000"},
+    {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4", "price": "0"},
+    {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni", "price": "80000"},
+    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":"", "price": "0"},
+    {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":"", "price": "220000"},
+    {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4", "price": "0"},
+    {"id":"oem_se_pro_single","name":"순정연동 SE PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se", "price": "110000"},
 
     # 아크릴 & 몰딩
-    {"id":"spk_acrylic_row1","name":"스피커 아크릴 (1열) 2PCS","category":"아크릴 & 몰딩","image":"tmvlzj"},
-    {"id":"spk_acrylic_row1_torres","name":"(토레스)스피커 아크릴 (1열) 2PCS","category":"아크릴 & 몰딩","image":"xhfptm"},
-    {"id":"foot_rgb_acrylic_4pcs","name":"RGB 풋등 아크릴 1대분 4PCS","category":"아크릴 & 몰딩","image":"foot"},
-    {"id":"foot_moving_acrylic_4pcs","name":"무빙 풋등 아크릴 1대분 4PCS","category":"아크릴 & 몰딩","image":"foot"},
-    {"id":"dial_acrylic_mq4_k8_ka4p","name":"다이얼 아크릴 MQ4(페리),K8(페리),KA4페리","category":"아크릴 & 몰딩","image":"ekdldjf"},
-    {"id":"dial_acrylic_nq5","name":"다이얼 아크릴 NQ5","category":"아크릴 & 몰딩","image":"ekdldjf"},
-    {"id":"dial_acrylic_old_ka4","name":"다이얼 아크릴 구형 KA4","category":"아크릴 & 몰딩","image":"ekdldjf"},
-    {"id":"dial_acrylic_dl3_ferry","name":"다이얼 아크릴 DL3(페리)","category":"아크릴 & 몰딩","image":"ekdldjf"},
-    {"id":"stinger_airvent_row1","name":"스팅어 벤풍구 아크릴 1열","category":"아크릴 & 몰딩","image":"Stinger1"},
-    {"id":"stinger_airvent_row2","name":"스팅어 벤풍구 아크릴 2열","category":"아크릴 & 몰딩","image":"stinger2"},
+    {"id":"spk_acrylic_row1","name":"스피커 아크릴 (1열) 2PCS","category":"아크릴 & 몰딩","image":"tmvlzj", "price": "35000"},
+    {"id":"spk_acrylic_row1_torres","name":"(토레스)스피커 아크릴 (1열) 2PCS","category":"아크릴 & 몰딩","image":"xhfptm", "price": "38000"},
+    {"id":"foot_rgb_acrylic_4pcs","name":"RGB 풋등 아크릴 1대분 4PCS","category":"아크릴 & 몰딩","image":"foot", "price": "20000"},
+    {"id":"foot_moving_acrylic_4pcs","name":"무빙 풋등 아크릴 1대분 4PCS","category":"아크릴 & 몰딩","image":"foot", "price": "24000"},
+    {"id":"dial_acrylic_mq4_k8_ka4p","name":"다이얼 아크릴 MQ4(페리),K8(페리),KA4페리","category":"아크릴 & 몰딩","image":"ekdldjf", "price": "15000"},
+    {"id":"dial_acrylic_nq5","name":"다이얼 아크릴 NQ5","category":"아크릴 & 몰딩","image":"ekdldjf", "price": "15000"},
+    {"id":"dial_acrylic_old_ka4","name":"다이얼 아크릴 구형 KA4","category":"아크릴 & 몰딩","image":"ekdldjf", "price": "15000"},
+    {"id":"dial_acrylic_dl3_ferry","name":"다이얼 아크릴 DL3(페리)","category":"아크릴 & 몰딩","image":"ekdldjf", "price": "15000"},
+    {"id":"stinger_airvent_row1","name":"스팅어 벤풍구 아크릴 1열","category":"아크릴 & 몰딩","image":"Stinger1", "price": "45000"},
+    {"id":"stinger_airvent_row2","name":"스팅어 벤풍구 아크릴 2열","category":"아크릴 & 몰딩","image":"stinger2", "price": "40000"},
 
     # 컵홀더 윙
-    {"id":"cupholder_wing","name":"컵홀더 (날개)(LED없음)","category":"컵홀더 윙","image":"cupwing"},
+    {"id":"cupholder_wing","name":"컵홀더 (날개)(LED없음)","category":"컵홀더 윙","image":"cupwing", "price": "12000"},
 
     # 배선/커넥터/부자재
-    {"id":"conn_4p_100","name":"4P 커넥터 100PCS (암,숫)","category":"배선/커넥터/부자재","image":"4pconnet"},
-    {"id":"harness_pin_ket_100","name":"하네스 핀 KET 암,숫 100PCS","category":"배선/커넥터/부자재","image":"ket"},
-    {"id":"harness_pin_amp_100","name":"하네스 핀 AMP 암,숫 100PCS","category":"배선/커넥터/부자재","image":"ket"},
-    {"id":"conn_y_50","name":"Y자 커넥터 50PCS","category":"배선/커넥터/부자재","image":"4pY"},
-    {"id":"power_cable","name":"전원케이블","category":"배선/커넥터/부자재","image":"MAINPOWER"},
-    {"id":"music_switch","name":"음악반응 스위치","category":"배선/커넥터/부자재","image":"MUSICBUTTON"},
-    {"id":"tape_3m_gray","name":"3m 양면 테이프(회색)","category":"배선/커넥터/부자재","image":"3M"},
-    {"id":"tape_reflect","name":"반사 테이프","category":"배선/커넥터/부자재","image":"bansa"},
-    {"id":"tape_sookwang_5mm","name":"아크릴 전용 3M 수광 테이프(투명) 5mm","category":"배선/커넥터/부자재","image":"SOOKWANG"},
-    {"id":"tape_sookwang_3mm","name":"아크릴 전용 3M 수광 테이프(투명) 3mm","category":"배선/커넥터/부자재","image":"SOOKWANG"},
-    {"id":"foot_rgb_rollbar","name":"풋등 RGB 롤바","category":"배선/커넥터/부자재","image":"RGBRALL"},
-    {"id":"foot_moving_rollbar","name":"풋등 무빙 롤바","category":"배선/커넥터/부자재","image":"MOVINGRALL"},
-    {"id":"rgb_one_shot","name":"RGB 단발 LED","category":"배선/커넥터/부자재","image":"RGBONESHOT"},
-    {"id":"steer_remote_5_1k","name":"핸들 리모컨 5.1K 저항","category":"배선/커넥터/부자재","image":"5.1K"},
-    {"id":"fuse_10a","name":"퓨즈 10A","category":"배선/커넥터/부자재","image":"FUSE10A"},
-    {"id":"stinger_airvent1","name":"벤풍구 1열 (스팅어)","category":"배선/커넥터/부자재","image":"STINGERAIRVENT1"},
-    {"id":"stinger_airvent2","name":"벤풍구 2열 (스팅어)","category":"배선/커넥터/부자재","image":"STINGERAIRVENT2"},
+    {"id":"conn_4p_100","name":"4P 커넥터 100PCS (암,숫)","category":"배선/커넥터/부자재","image":"4pconnet", "price": "30000"},
+    {"id":"harness_pin_ket_100","name":"하네스 핀 KET 암,숫 100PCS","category":"배선/커넥터/부자재","image":"ket", "price": "10000"},
+    {"id":"harness_pin_amp_100","name":"하네스 핀 AMP 암,숫 100PCS","category":"배선/커넥터/부자재","image":"ket", "price": "10000"},
+    {"id":"conn_y_50","name":"Y자 커넥터 50PCS","category":"배선/커넥터/부자재","image":"4pY", "price": "25000"},
+    {"id":"power_cable","name":"전원케이블","category":"배선/커넥터/부자재","image":"MAINPOWER", "price": "5000"},
+    {"id":"music_switch","name":"음악반응 스위치","category":"배선/커넥터/부자재","image":"MUSICBUTTON", "price": "8000"},
+    {"id":"tape_3m_gray","name":"3m 양면 테이프(회색)","category":"배선/커넥터/부자재","image":"3M", "price": "7000"},
+    {"id":"tape_reflect","name":"반사 테이프","category":"배선/커넥터/부자재","image":"bansa", "price": "4000"},
+    {"id":"tape_sookwang_5mm","name":"아크릴 전용 3M 수광 테이프(투명) 5mm","category":"배선/커넥터/부자재","image":"SOOKWANG", "price": "12000"},
+    {"id":"tape_sookwang_3mm","name":"아크릴 전용 3M 수광 테이프(투명) 3mm","category":"배선/커넥터/부자재","image":"SOOKWANG", "price": "10000"},
+    {"id":"foot_rgb_rollbar","name":"풋등 RGB 롤바","category":"배선/커넥터/부자재","image":"RGBRALL", "price": "15000"},
+    {"id":"foot_moving_rollbar","name":"풋등 무빙 롤바","category":"배선/커넥터/부자재","image":"MOVINGRALL", "price": "18000"},
+    {"id":"rgb_one_shot","name":"RGB 단발 LED","category":"배선/커넥터/부자재","image":"RGBONESHOT", "price": "3000"},
+    {"id":"steer_remote_5_1k","name":"핸들 리모컨 5.1K 저항","category":"배선/커넥터/부자재","image":"5.1K", "price": "1000"},
+    {"id":"fuse_10a","name":"퓨즈 10A","category":"배선/커넥터/부자재","image":"FUSE10A", "price": "500"},
+    {"id":"stinger_airvent1","name":"벤풍구 1열 (스팅어)","category":"배선/커넥터/부자재","image":"STINGERAIRVENT1", "price": "90000"},
+    {"id":"stinger_airvent2","name":"벤풍구 2열 (스팅어)","category":"배선/커넥터/부자재","image":"STINGERAIRVENT2", "price": "80000"},
 
     # 완제품 세트
-    {"id":"foot_rgb_row1","name":"RGB 풋등 1열 (2개)","category":"완제품 세트","image":"rgbfoot"},
-    {"id":"foot_rgb_row2","name":"RGB 풋등 2열 (2개)","category":"완제품 세트","image":"rgbfoot"},
-    {"id":"foot_moving_row1","name":"무빙 풋등 1열 (2개)","category":"완제품 세트","image":"movingfoot"},
-    {"id":"foot_moving_row2","name":"무빙 풋등 2열 (2개)","category":"완제품 세트","image":"movingfoot"},
-    {"id":"speaker_rgb_set","name":"RGB 스피커 2개 1SET","category":"완제품 세트","image":"speaker"},
-    {"id":"speaker_moving_set","name":"무빙 스피커 2개 1SET","category":"완제품 세트","image":"speaker"},
-    {"id":"mq4_rgb_front","name":"쏘렌토MQ4 RGB 전면","category":"완제품 세트","image":"mq4center"},
-    {"id":"mq4_moving_front","name":"쏘렌토MQ4 무빙 전면","category":"완제품 세트","image":"mq4center"},
-    {"id":"palisade_rgb_front","name":"신형팰리세이드 RGB 전면","category":"완제품 세트","image":"palisadedoor"},
-    {"id":"palisade_moving_front","name":"신형팰리세이드 무빙 전면","category":"완제품 세트","image":"thenewpalisade"},
-    {"id":"palisade_rgb_door","name":"신형,구형 팰리세이드 RGB 도어","category":"완제품 세트","image":"palisadedoor"},
-    {"id":"palisade_moving_door","name":"신형,구형 팰리세이드 무빙 도어","category":"완제품 세트","image":"palisadedoor"},
-    {"id":"gn7_rgb_front","name":"그랜져GN7 RGB 전면","category":"완제품 세트","image":"gn7center"},
-    {"id":"gn7_moving_front","name":"그랜져GN7 무빙 전면","category":"완제품 세트","image":"gn7center"},
-    {"id":"gn7_rgb_door","name":"그랜져GN7 RGB 도어","category":"완제품 세트","image":"gn7door"},
-    {"id":"gn7_moving_door","name":"그랜져GN7 무빙 도어","category":"완제품 세트","image":"gn7door"},
+    {"id":"foot_rgb_row1","name":"RGB 풋등 1열 (2개)","category":"완제품 세트","image":"rgbfoot", "price": "35000"},
+    {"id":"foot_rgb_row2","name":"RGB 풋등 2열 (2개)","category":"완제품 세트","image":"rgbfoot", "price": "35000"},
+    {"id":"foot_moving_row1","name":"무빙 풋등 1열 (2개)","category":"완제품 세트","image":"movingfoot", "price": "45000"},
+    {"id":"foot_moving_row2","name":"무빙 풋등 2열 (2개)","category":"완제품 세트","image":"movingfoot", "price": "45000"},
+    {"id":"speaker_rgb_set","name":"RGB 스피커 2개 1SET","category":"완제품 세트","image":"speaker", "price": "60000"},
+    {"id":"speaker_moving_set","name":"무빙 스피커 2개 1SET","category":"완제품 세트","image":"speaker", "price": "75000"},
+    {"id":"mq4_rgb_front","name":"쏘렌토MQ4 RGB 전면","category":"완제품 세트","image":"mq4center", "price": "110000"},
+    {"id":"mq4_moving_front","name":"쏘렌토MQ4 무빙 전면","category":"완제품 세트","image":"mq4center", "price": "130000"},
+    {"id":"palisade_rgb_front","name":"신형팰리세이드 RGB 전면","category":"완제품 세트","image":"palisadedoor", "price": "110000"},
+    {"id":"palisade_moving_front","name":"신형팰리세이드 무빙 전면","category":"완제품 세트","image":"thenewpalisade", "price": "130000"},
+    {"id":"palisade_rgb_door","name":"신형,구형 팰리세이드 RGB 도어","category":"완제품 세트","image":"palisadedoor", "price": "140000"},
+    {"id":"palisade_moving_door","name":"신형,구형 팰리세이드 무빙 도어","category":"완제품 세트","image":"palisadedoor", "price": "160000"},
+    {"id":"gn7_rgb_front","name":"그랜져GN7 RGB 전면","category":"완제품 세트","image":"gn7center", "price": "120000"},
+    {"id":"gn7_moving_front","name":"그랜져GN7 무빙 전면","category":"완제품 세트","image":"gn7center", "price": "140000"},
+    {"id":"gn7_rgb_door","name":"그랜져GN7 RGB 도어","category":"완제품 세트","image":"gn7door", "price": "150000"},
+    {"id":"gn7_moving_door","name":"그랜져GN7 무빙 도어","category":"완제품 세트","image":"gn7door", "price": "170000"},
 ]
 
 # 세트 구성 규칙 (id 기반) : "세트ID": [("구성ID", 개수), ...]
@@ -132,7 +128,7 @@ SET_RULES: Dict[str, List[Tuple[str, int]]] = {
         ("moving_led_30", 2),
     ],
     "oem_se_pro_set": [
-        ("oem_se_pro_single", 1),  # 원문에 V4 표기 유지
+        ("oem_se_pro_single", 1),
         ("moving_led_110", 1),
         ("moving_led_90", 4),
         ("moving_led_50", 2),
@@ -167,7 +163,6 @@ def build_indexes(items: List[Dict[str, str]]):
         by_id[it["id"]] = it
         by_name_to_id[it["name"]] = it["id"]
         categories.setdefault(it["category"], []).append(it["name"])
-    # 카테고리별 품목명 정렬
     for k in categories:
         categories[k].sort()
     return by_id, by_name_to_id, categories
@@ -177,7 +172,7 @@ ITEMS_BY_ID, NAME_TO_ID, ITEMS_BY_CATEGORY = build_indexes(ITEMS)
 # ---------- 유틸 ----------
 def resource_path(relative_path: str) -> str:
     try:
-        base_path = sys._MEIPASS  # type: ignore[attr-defined]
+        base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
@@ -215,7 +210,7 @@ def find_image_file(image_stem_or_name: Optional[str]):
 def open_file_cross_platform(path: str):
     try:
         if sys.platform.startswith("win"):
-            os.startfile(path)  # type: ignore[attr-defined]
+            os.startfile(path)
         elif sys.platform == "darwin":
             subprocess.Popen(["open", path])
         else:
@@ -250,9 +245,9 @@ def send_telegram_message(text: str):
 class OrderApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("협력사 발주 프로그램")
-        self.root.geometry("900x640")
-        self.root.minsize(780, 560)
+        self.root.title("협력사 발주 프로그램 (v2.0 Price System)")
+        self.root.geometry("1000x750")
+        self.root.minsize(900, 650)
         saved_geo = load_window_position()
         if saved_geo:
             self.root.geometry(saved_geo)
@@ -269,7 +264,6 @@ class OrderApp:
         self.build_cart()
         self.bind_shortcuts()
 
-    # ---- 스타일(밝은) ----
     def build_style(self):
         style = ttk.Style()
         style.theme_use("clam")
@@ -278,6 +272,7 @@ class OrderApp:
         style.configure("TLabel", background="#ffffff", foreground="#111827", font=("Segoe UI", 11))
         style.configure("Subtle.TLabel", background="#ffffff", foreground="#6b7280", font=("Segoe UI", 10))
         style.configure("Header.TLabel", background="#ffffff", foreground="#111827", font=("Segoe UI Semibold", 14))
+        style.configure("Price.TLabel", background="#ffffff", foreground="#2563eb", font=("Segoe UI Bold", 12))
         style.configure("TButton", font=("Segoe UI", 11), padding=(10, 7))
         style.configure("TCombobox", fieldbackground="#ffffff")
         style.configure("Treeview",
@@ -287,24 +282,22 @@ class OrderApp:
                         background="#f3f4f6", foreground="#111827", font=("Segoe UI Semibold", 11))
         style.map("Treeview", background=[("selected", "#e0e7ff")])
 
-    # ---- 상단 ----
     def build_topbar(self):
         top = ttk.Frame(self.root, style="Card.TFrame", padding=12)
         top.pack(side="top", fill="x", padx=14, pady=(14, 8))
 
         ttk.Label(top, text="협력사", style="Header.TLabel").pack(side="left")
-        self.dealer_combo = ttk.Combobox(top, values=list(dealers.keys()), state="readonly", width=34)
+        self.dealer_combo = ttk.Combobox(top, values=list(dealers.keys()), state="readonly", width=30)
         self.dealer_combo.pack(side="left", padx=(8, 16))
 
-        ttk.Label(top, text="검색(전체)", style="Subtle.TLabel").pack(side="left")
-        self.search_entry = ttk.Entry(top, textvariable=self.search_var, width=28)
+        ttk.Label(top, text="검색", style="Subtle.TLabel").pack(side="left")
+        self.search_entry = ttk.Entry(top, textvariable=self.search_var, width=22)
         self.search_entry.pack(side="left", padx=(6, 8))
         self.search_entry.bind("<KeyRelease>", lambda e: self.refresh_all_tabs_list())
 
         ttk.Button(top, text="📌 필독", command=self.show_notice).pack(side="right")
         ttk.Button(top, text="발주 보내기", command=self.submit_order).pack(side="right", padx=(0, 8))
 
-    # ---- 본문: 좌(탭), 우(미리보기) ----
     def build_body_with_tabs(self):
         body = ttk.Frame(self.root, style="Card.TFrame", padding=10)
         body.pack(side="top", fill="both", expand=True, padx=14, pady=(0, 8))
@@ -319,25 +312,29 @@ class OrderApp:
         self.notebook.pack(fill="both", expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.refresh_all_tabs_list())
 
-        # '전체' 탭
         self._create_tab(self.notebook, "전체")
-        # 카테고리 탭: 카탈로그로부터 동적 생성
         for cat in sorted(ITEMS_BY_CATEGORY.keys()):
             self._create_tab(self.notebook, cat)
 
-        # 우측: 미리보기
         right = ttk.Frame(self.paned, style="Card.TFrame", padding=10)
         header = ttk.Frame(right, style="Card.TFrame")
         header.pack(fill="x")
         ttk.Label(header, text="미리보기", style="Header.TLabel").pack(side="left")
-        ttk.Label(header, text="(이미지 더블클릭: 원본 열기)", style="Subtle.TLabel").pack(side="left", padx=(8, 0))
+        ttk.Label(header, text="(더블클릭: 원본)", style="Subtle.TLabel").pack(side="left", padx=(8, 0))
 
         self.preview = tk.Label(
             right, bg="#f3f4f6", fg="#6b7280", anchor="center",
-            text="탭에서 품목을 선택하세요.", font=("Segoe UI", 11), relief="flat"
+            text="품목을 선택하세요.", font=("Segoe UI", 11), relief="flat"
         )
         self.preview.pack(fill="both", expand=True, pady=(6, 8))
         self.preview.bind("<Double-Button-1>", self.open_last_preview_file)
+
+        # --- 가격 정보 표시 영역 ---
+        self.price_card = ttk.Frame(right, style="Card.TFrame", padding=5)
+        self.price_card.pack(fill="x", pady=(0, 10))
+        
+        self.price_info_label = ttk.Label(self.price_card, text="공급가: - | 부가세포함: -", style="Price.TLabel", anchor="center")
+        self.price_info_label.pack(fill="x")
 
         control = ttk.Frame(right, style="Card.TFrame")
         control.pack(fill="x")
@@ -363,20 +360,18 @@ class OrderApp:
             highlightthickness=0, relief="flat", font=("Segoe UI", 11), width=44
         )
         yscroll = ttk.Scrollbar(list_frame, orient="vertical", command=lb.yview)
-        xscroll = ttk.Scrollbar(list_frame, orient="horizontal", command=lb.xview)
-        lb.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        lb.configure(yscrollcommand=yscroll.set)
         lb.grid(row=0, column=0, sticky="nsew")
         yscroll.grid(row=0, column=1, sticky="ns")
-        xscroll.grid(row=1, column=0, sticky="ew")
         list_frame.rowconfigure(0, weight=1)
         list_frame.columnconfigure(0, weight=1)
+        
         lb.bind("<<ListboxSelect>>", self.on_product_select)
         lb.bind("<Double-Button-1>", self.on_add_by_double_click)
         lb.bind("<Up>", self.on_list_up_down)
         lb.bind("<Down>", self.on_list_up_down)
         self.tab_listboxes[title] = lb
 
-    # ---- 장바구니 ----
     def build_cart(self):
         card = ttk.Frame(self.root, style="Card.TFrame", padding=10)
         card.pack(side="bottom", fill="both", padx=14, pady=(0, 14))
@@ -384,24 +379,33 @@ class OrderApp:
         header = ttk.Frame(card, style="Card.TFrame")
         header.pack(fill="x")
         ttk.Label(header, text="🛒 장바구니", style="Header.TLabel").pack(side="left")
+        
+        # 합계 표시용 레이블
+        self.total_label = ttk.Label(header, text="총 합계: 0원 (VAT 포함: 0원)", font=("Segoe UI Bold", 12), foreground="#dc2626")
+        self.total_label.pack(side="left", padx=20)
+
         ttk.Button(header, text="선택 항목 삭제", command=self.remove_selected).pack(side="right")
 
         table_frame = ttk.Frame(card, style="Card.TFrame")
         table_frame.pack(fill="both", expand=True, pady=(6, 0))
 
-        self.cart_tree = ttk.Treeview(table_frame, columns=("item", "qty"), show="headings", height=7)
+        # 컬럼에 가격 추가
+        self.cart_tree = ttk.Treeview(table_frame, columns=("item", "qty", "unit_p", "total_p"), show="headings", height=6)
         self.cart_tree.heading("item", text="품목")
         self.cart_tree.heading("qty", text="수량")
-        self.cart_tree.column("item", width=520, anchor="w")
-        self.cart_tree.column("qty", width=80, anchor="center")
+        self.cart_tree.heading("unit_p", text="단가(공급가)")
+        self.cart_tree.heading("total_p", text="금액 합계")
+        
+        self.cart_tree.column("item", width=400, anchor="w")
+        self.cart_tree.column("qty", width=60, anchor="center")
+        self.cart_tree.column("unit_p", width=120, anchor="e")
+        self.cart_tree.column("total_p", width=120, anchor="e")
 
         yscroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.cart_tree.yview)
-        xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.cart_tree.xview)
-        self.cart_tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        self.cart_tree.configure(yscrollcommand=yscroll.set)
 
         self.cart_tree.grid(row=0, column=0, sticky="nsew")
         yscroll.grid(row=0, column=1, sticky="ns")
-        xscroll.grid(row=1, column=0, sticky="ew")
 
         table_frame.rowconfigure(0, weight=1)
         table_frame.columnconfigure(0, weight=1)
@@ -411,34 +415,25 @@ class OrderApp:
             return "break"
         self.cart_tree.bind("<Delete>", _on_delete)
 
-    # ---- 단축키 ----
     def bind_shortcuts(self):
         self.root.bind("<Return>", lambda e: self.add_to_cart())
 
-    # ---- 검색/탭 갱신 ----
     def refresh_all_tabs_list(self):
         q = self.search_var.get().strip().lower()
-        # '전체' 탭
         lb_all = self.tab_listboxes.get("전체")
         if lb_all:
             lb_all.delete(0, "end")
-            # 전체는 카테고리 이름도 함께 표기
             for cat in sorted(ITEMS_BY_CATEGORY.keys()):
                 for name in ITEMS_BY_CATEGORY[cat]:
-                    if q and q not in name.lower():
-                        continue
+                    if q and q not in name.lower(): continue
                     lb_all.insert("end", f"[{cat}] {name}")
-        # 개별 카테고리 탭
         for cat, lb in self.tab_listboxes.items():
-            if cat == "전체":
-                continue
+            if cat == "전체": continue
             lb.delete(0, "end")
             for name in ITEMS_BY_CATEGORY.get(cat, []):
-                if q and q not in name.lower():
-                    continue
+                if q and q not in name.lower(): continue
                 lb.insert("end", name)
 
-        # 활성 탭 자동 선택 + 미리보기
         active = self.active_category()
         lb_active = self.tab_listboxes.get(active)
         if lb_active and lb_active.size() > 0 and not lb_active.curselection():
@@ -447,12 +442,10 @@ class OrderApp:
             lb_active.see(0)
             self.on_product_select()
 
-    # ---- 리스트 키 네비게이션 ----
     def on_list_up_down(self, event):
         lb: tk.Listbox = event.widget
         size = lb.size()
-        if size == 0:
-            return "break"
+        if size == 0: return "break"
         sel = lb.curselection()
         idx = sel[0] if sel else -1
         if event.keysym == "Up":
@@ -466,7 +459,6 @@ class OrderApp:
         self.on_product_select()
         return "break"
 
-    # ---- 선택 품목 ----
     def active_category(self) -> str:
         idx = self.notebook.index("current")
         return self.notebook.tab(idx, "text")
@@ -475,42 +467,47 @@ class OrderApp:
         cat = self.active_category()
         lb = self.tab_listboxes[cat]
         sel = lb.curselection()
-        if not sel:
-            return None
+        if not sel: return None
         text = lb.get(sel[0])
         if cat == "전체":
-            try:
-                return text.split("] ", 1)[1]
-            except Exception:
-                return text
+            try: return text.split("] ", 1)[1]
+            except: return text
         return text
 
-    # ---- 미리보기 ----
     def on_product_select(self, event=None):
         name = self.get_selected_product_name()
-        if not name:
-            return
+        if not name: return
         self.show_preview(name)
+        self.update_price_display(name)
+
+    # --- 가격 레이블 업데이트 기능 ---
+    def update_price_display(self, name: str):
+        item_id = NAME_TO_ID.get(name)
+        if not item_id: return
+        item_data = ITEMS_BY_ID.get(item_id)
+        price_val = int(item_data.get("price", 0))
+        vat_val = int(price_val * 1.1)
+        
+        self.price_info_label.config(
+            text=f"공급가: {price_val:,}원 | 부가세포함: {vat_val:,}원"
+        )
 
     def on_add_by_double_click(self, event=None):
         self.add_to_cart()
 
     def refresh_preview_thumb(self):
-        if not self._last_preview_path:
-            return
+        if not self._last_preview_path: return
         self._render_image(self._last_preview_path)
 
     def show_preview(self, name: str):
         item_id = NAME_TO_ID.get(name)
         if not item_id:
-            self.preview.config(text="이미지 없음", image="")
-            self._photo_cache = None; self._last_preview_path = None
+            self.preview.config(text="이미지 없음", image=""); self._photo_cache = None; self._last_preview_path = None
             return
         image_stem = ITEMS_BY_ID[item_id].get("image")
         path = find_image_file(image_stem)
         if not path:
-            self.preview.config(text="이미지 없음", image="")
-            self._photo_cache = None; self._last_preview_path = None
+            self.preview.config(text="이미지 없음", image=""); self._photo_cache = None; self._last_preview_path = None
             return
         self._last_preview_path = path
         self._render_image(path)
@@ -525,16 +522,14 @@ class OrderApp:
                 img.thumbnail((w, h))
                 self._photo_cache = ImageTk.PhotoImage(img)
                 self.preview.config(image=self._photo_cache, text="")
-            except Exception:
-                self.preview.config(text="이미지 로드 실패", image="")
-                self._photo_cache = None
+            except:
+                self.preview.config(text="이미지 로드 실패", image=""); self._photo_cache = None
         else:
             try:
                 self._photo_cache = tk.PhotoImage(file=path)
                 self.preview.config(image=self._photo_cache, text="")
-            except Exception:
-                self.preview.config(text="미리보기 불가 (Pillow 미설치)", image="")
-                self._photo_cache = None
+            except:
+                self.preview.config(text="미리보기 불가 (Pillow 미설치)", image=""); self._photo_cache = None
 
     def open_last_preview_file(self, event=None):
         if not self._last_preview_path or not os.path.exists(self._last_preview_path):
@@ -542,9 +537,7 @@ class OrderApp:
             return
         open_file_cross_platform(self._last_preview_path)
 
-    # ---- 카트/세트 ----
     def expand_set_items(self, item_id: str, qty: int) -> List[Tuple[str, int]]:
-        # id 기반으로 세트 확장. 세트가 아니면 자기 자신 반환.
         if item_id in SET_RULES:
             expanded: List[Tuple[str, int]] = []
             for child_id, count in SET_RULES[item_id]:
@@ -559,40 +552,50 @@ class OrderApp:
             return
         try:
             qty = int(self.qty_spin.get())
-            if qty <= 0:
-                raise ValueError
-        except Exception:
+            if qty <= 0: raise ValueError
+        except:
             messagebox.showwarning("오류", "수량은 1 이상의 숫자로 입력하세요.")
             return
 
         item_id = NAME_TO_ID.get(name)
-        if not item_id:
-            messagebox.showwarning("오류", "알 수 없는 품목입니다.")
-            return
+        if not item_id: return
 
+        # 세트 상품 여부와 관계없이 개별 단가 계산을 위해 확장 처리
         for add_id, add_qty in self.expand_set_items(item_id, qty):
-            display_name = ITEMS_BY_ID.get(add_id, {}).get("name", add_id)
-            self._merge_cart(display_name, add_qty)
+            target_item = ITEMS_BY_ID.get(add_id, {})
+            display_name = target_item.get("name", add_id)
+            unit_price = int(target_item.get("price", 0))
+            self._merge_cart(display_name, add_qty, unit_price)
+        
+        self.update_cart_total()
 
-    def _merge_cart(self, name: str, add_qty: int):
+    def _merge_cart(self, name: str, add_qty: int, unit_price: int):
         for iid in self.cart_tree.get_children():
-            item_name, item_qty = self.cart_tree.item(iid, "values")
+            item_name, item_qty, up, tp = self.cart_tree.item(iid, "values")
             if item_name == name:
                 new_qty = int(item_qty) + add_qty
-                self.cart_tree.item(iid, values=(name, new_qty))
+                new_total = new_qty * unit_price
+                self.cart_tree.item(iid, values=(name, new_qty, f"{unit_price:,}", f"{new_total:,}"))
                 return
-        self.cart_tree.insert("", "end", values=(name, add_qty))
+        total_price = add_qty * unit_price
+        self.cart_tree.insert("", "end", values=(name, add_qty, f"{unit_price:,}", f"{total_price:,}"))
+
+    def update_cart_total(self):
+        total_supply = 0
+        for iid in self.cart_tree.get_children():
+            _, _, _, tp_str = self.cart_tree.item(iid, "values")
+            total_supply += int(tp_str.replace(",", ""))
+        
+        total_vat = int(total_supply * 1.1)
+        self.total_label.config(text=f"총 합계: {total_supply:,}원 (VAT 포함: {total_vat:,}원)")
 
     def remove_selected(self, silent_if_empty: bool = False):
         sel = self.cart_tree.selection()
-        if not sel:
-            if silent_if_empty:
-                return
-            return
+        if not sel: return
         for iid in sel:
             self.cart_tree.delete(iid)
+        self.update_cart_total()
 
-    # ---- 발주/필독 ----
     def submit_order(self):
         dealer = self.dealer_combo.get()
         if not dealer:
@@ -601,26 +604,38 @@ class OrderApp:
         if not self.cart_tree.get_children():
             messagebox.showwarning("오류", "장바구니가 비어 있습니다.")
             return
+        
         info = dealers[dealer]
         order_list, order_list_msg = [], ""
+        total_supply = 0
+        
         for iid in self.cart_tree.get_children():
-            name, qty = self.cart_tree.item(iid, "values")
-            order_list.append(f"{name} ({qty}개)")
-            order_list_msg += f"{name} ({qty}개)\n"
+            name, qty, up, tp = self.cart_tree.item(iid, "values")
+            order_list.append(f"{name} ({qty}개) - {tp}원")
+            order_list_msg += f"- {name} ({qty}개)\n"
+            total_supply += int(tp.replace(",", ""))
+        
+        total_vat = int(total_supply * 1.1)
+        
         msg = (
             f"📦 신규 발주 접수\n\n"
             f"🏪 협력사: {dealer}\n"
             f"📞 연락처: {info['phone']}\n"
             f"📍 주소: {info['addr']}\n\n"
-            f"🛒 주문 품목:\n{order_list_msg}"
+            f"🛒 주문 품목:\n{order_list_msg}\n"
+            f"💰 총 공급가: {total_supply:,}원\n"
+            f"💳 합계(VAT포함): {total_vat:,}원"
         )
+        
         ok = send_telegram_message(msg)
         if not ok:
             messagebox.showerror("전송 실패", "텔레그램 전송이 실패했습니다.")
             return
+        
         messagebox.showinfo("완료", "발주가 정상적으로 전송되었습니다.")
-        save_order_to_txt(order_list)
+        save_order_to_txt(order_list + [f"총 합계(VAT포함): {total_vat:,}원"])
         self.cart_tree.delete(*self.cart_tree.get_children())
+        self.update_cart_total()
 
     def show_notice(self):
         notice_text = (
@@ -658,7 +673,6 @@ class OrderApp:
 
 def main():
     global ITEMS_BY_ID, NAME_TO_ID, ITEMS_BY_CATEGORY
-    # 혹시 외부에서 ITEMS 수정 후 호출 시 인덱스 재생성
     ITEMS_BY_ID, NAME_TO_ID, ITEMS_BY_CATEGORY = build_indexes(ITEMS)
     root = tk.Tk()
     app = OrderApp(root)
@@ -666,7 +680,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
