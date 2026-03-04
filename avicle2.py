@@ -46,7 +46,6 @@ ITEM_CATALOG = {
     "무빙 30cm": {"category": "LED (RGB/무빙)", "image": "moving30", "price": 16500},
     "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12000},
 
-
     # 컵홀더 윙
     "컵홀더 (날개)(LED없음)": {"category": "컵홀더 윙", "image": "cupwing", "price": 35000},
 
@@ -234,6 +233,16 @@ def submit_order():
     dealer = entry_name.get().strip()
     phone  = entry_phone.get().strip()
     addr   = entry_addr.get().strip()
+    
+    # 코딩 차량 정보 수집
+    car_model = entry_car_model.get().strip()
+    car_fuel = combo_fuel.get().strip()
+    car_year = entry_car_year.get().strip()
+    car_genuine = combo_genuine.get().strip()
+    
+    # 차량 정보 중 하나라도 입력되었는지 확인
+    has_car_info = any([car_model, car_fuel, car_year, car_genuine])
+
     if not dealer or not phone or not addr:
         messagebox.showwarning("오류", "업체명, 전화번호, 주소 모두 입력하세요.")
         return
@@ -251,17 +260,31 @@ def submit_order():
         order_lines.append(f"{name} — {qty}개 — {format_won(amount)}")
     grand_total = total + total_vat
 
+    # 텔레그램 메시지 구성
     tg_lines = [
         "📦 신규 발주 접수", "",
         f"🏪 업체명: {dealer}",
         f"📞 전화번호: {phone}",
-        f"📍 주소: {addr}", "",
+        f"📍 주소: {addr}", ""
+    ]
+    
+    # 차량 정보가 입력된 경우에만 텔레그램 메시지에 추가
+    if has_car_info:
+        tg_lines.extend([
+            "🚗 [코딩 차량 정보]",
+            f"- 차종: {car_model if car_model else '미입력'}",
+            f"- 연료: {car_fuel if car_fuel else '미입력'}",
+            f"- 연식: {car_year if car_year else '미입력'}",
+            f"- 순정: {car_genuine if car_genuine else '미입력'}", ""
+        ])
+
+    tg_lines.extend([
         "🛒 주문 품목:",
         *order_lines, "",
         f"총액: {format_won(total)}",
         f"VAT(10%): {format_won(total_vat)}",
         f"합계: {format_won(grand_total)}",
-    ]
+    ])
     tg_msg = "\n".join(tg_lines)
 
     try:
@@ -274,14 +297,26 @@ def submit_order():
         messagebox.showerror("전송 실패", f"텔레그램 전송에 실패했습니다.\n{e}")
         return
 
-    # 파일 저장(상세)
+    # 텍스트 파일 저장 상세 구성
     save_lines = [
         "발주 상세", "",
         f"업체명: {dealer}",
         f"전화번호: {phone}",
-        f"주소: {addr}", "",
-        "품목 | 수량 | 단가 | 금액 | VAT | 합계"
+        f"주소: {addr}", ""
     ]
+    
+    # 차량 정보가 입력된 경우에만 텍스트 파일에 추가
+    if has_car_info:
+        save_lines.extend([
+            "[코딩 차량 정보]",
+            f"차종: {car_model if car_model else '미입력'}",
+            f"연료: {car_fuel if car_fuel else '미입력'}",
+            f"연식: {car_year if car_year else '미입력'}",
+            f"순정: {car_genuine if car_genuine else '미입력'}", ""
+        ])
+
+    save_lines.append("품목 | 수량 | 단가 | 금액 | VAT | 합계")
+    
     for iid in cart_tree.get_children():
         name, qty, unit_price_str, amount, vat, line_total = cart_tree.item(iid, "values")
         save_lines.append(f"{name} | {qty} | {unit_price_str} | {int(amount):,} | {int(vat):,} | {int(line_total):,}")
@@ -295,6 +330,13 @@ def submit_order():
 
     messagebox.showinfo("완료", "발주가 정상적으로 전송되었습니다.")
     cart_tree.delete(*cart_tree.get_children())
+    
+    # 주문 완료 후 차량 정보 초기화 (선택사항)
+    entry_car_model.delete(0, tk.END)
+    combo_fuel.set('')
+    entry_car_year.delete(0, tk.END)
+    combo_genuine.set('')
+    
     update_totals()
 
 def open_item_image(event):
@@ -323,7 +365,7 @@ def open_item_image(event):
 # -------------------- UI --------------------
 root = tk.Tk()
 root.title("협력사 발주 프로그램")
-root.geometry("900x860")
+root.geometry("900x900") # 세로 길이를 조금 늘렸습니다.
 root.configure(bg="#f0f2f5")
 
 saved_geo = load_window_position()
@@ -352,6 +394,28 @@ entry_phone.pack(fill="x", padx=2, pady=(0,8))
 tk.Label(info_frame, text="주소", bg="#f0f2f5").pack(anchor="w")
 entry_addr = tk.Entry(info_frame, width=60, font=("Helvetica", 12))
 entry_addr.pack(fill="x", padx=2, pady=(0,8))
+
+# ---- 코딩 차량 정보 (선택) 추가 ----
+car_info_frame = tk.LabelFrame(root, text="코딩 차량 정보 (선택 입력)", bg="#f0f2f5", font=("Helvetica", 11, "bold"), pady=10, padx=10)
+car_info_frame.pack(fill="x", padx=20, pady=(0, 8))
+
+# 1열: 차종, 2열: 연료
+tk.Label(car_info_frame, text="차종(직접작성)", bg="#f0f2f5", font=("Helvetica", 11)).grid(row=0, column=0, sticky="w", padx=(0, 5), pady=5)
+entry_car_model = tk.Entry(car_info_frame, width=20, font=("Helvetica", 12))
+entry_car_model.grid(row=0, column=1, padx=(0, 20), pady=5)
+
+tk.Label(car_info_frame, text="연료", bg="#f0f2f5", font=("Helvetica", 11)).grid(row=0, column=2, sticky="w", padx=(0, 5), pady=5)
+combo_fuel = ttk.Combobox(car_info_frame, values=["", "LPG", "가솔린", "하이브리드", "전기차", "디젤"], width=18, state="readonly", font=("Helvetica", 12))
+combo_fuel.grid(row=0, column=3, pady=5)
+
+# 2열: 연식, 2열: 순정
+tk.Label(car_info_frame, text="연식(직접작성)", bg="#f0f2f5", font=("Helvetica", 11)).grid(row=1, column=0, sticky="w", padx=(0, 5), pady=5)
+entry_car_year = tk.Entry(car_info_frame, width=20, font=("Helvetica", 12))
+entry_car_year.grid(row=1, column=1, padx=(0, 20), pady=5)
+
+tk.Label(car_info_frame, text="순정 (유/무)", bg="#f0f2f5", font=("Helvetica", 11)).grid(row=1, column=2, sticky="w", padx=(0, 5), pady=5)
+combo_genuine = ttk.Combobox(car_info_frame, values=["", "유", "무"], width=18, state="readonly", font=("Helvetica", 12))
+combo_genuine.grid(row=1, column=3, pady=5)
 
 # ---- 품목 선택 ----
 item_frame = tk.Frame(root, bg="#f0f2f5", pady=8)
@@ -443,6 +507,3 @@ if main_categories:
 update_totals()
 
 root.mainloop()
-
-
-
