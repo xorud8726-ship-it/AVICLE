@@ -632,7 +632,11 @@ class OrderApp:
             messagebox.showerror("전송 실패", "텔레그램 전송이 실패했습니다.")
             return
         
-        messagebox.showinfo("완료", "발주가 정상적으로 전송되었습니다.")
+        messagebox.showinfo("완료", "발주가 정상적으로 전송되었습니다.\n- 12시 이전 발주\n"
+            "- 오후 1시 이전 입금확인건\n"
+            "- 당일 발송됩니다.\n"
+            "- 완제품인 경우 1~2일 이후\n"
+            "- 발송 될수 있습니다\n")
         save_order_to_txt(order_list + [f"총 합계(VAT포함): {total_vat:,}원"])
         self.cart_tree.delete(*self.cart_tree.get_children())
         self.update_cart_total()
@@ -642,7 +646,7 @@ class OrderApp:
             "📌 택배사 [한진택배]\n"
             "- 아크릴 LED 제품\n"
             "- 12시 이전 발주\n"
-            "- 14시 이전 입금확인건\n"
+            "- 오후 1시 이전 입금확인건\n"
             "- 당일 발송됩니다.\n"
             "- 완제품인 경우 1~2일 이후\n"
             "- 발송 될수 있습니다\n"
