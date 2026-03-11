@@ -17,22 +17,14 @@ CONFIG_FILE = "config.ini"
 TOKEN = "7895331234:AAG9ge6GGBg0plHb7axWcwSwIgSNG9gWvuY"
 CHAT_ID = "-1003315436286"
 
-# -------------------- 세트 규칙 --------------------
-set_rules = {
-    "순정연동 RGB 모듈 1개 세트": ["순정연동 RGB 모듈 1개 단품", "RGB 110cm", "RGB 90cm 4개"],
-    "순정연동 SE 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-    "순정연동 V4 모듈 1개 세트": ["순정연동 V4 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-    "유니버셜 se 모듈 1개 세트": ["순정연동 SE 모듈 1개 단품", "순정연동 블루투스 모듈 1개 단품", "무빙 110cm", "무빙 90cm 4개"],
-}
-
 # -------------------- 단일 카탈로그 (이름 ➜ {category, image, price}) --------------------
 # image: ./avicle/<image>.(jpg|jpeg|png) 자동 탐색
 ITEM_CATALOG = {
     # 모듈 (세트,단품)
     "RGB 블루투스 모듈(하우동)": {"category": "모듈 (세트,단품)", "image": "haodeng", "price": 20000},
-    "순정연동 RGB 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 198000},
-    "순정연동 SE 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "se", "price": 309000},
-    "유니버셜 se 모듈 1개 세트": {"category": "모듈 (세트,단품)", "image": "seset", "price": 369000},
+    "순정연동 RGB 모듈 1개 세트 (RGB 모듈, 110 1개, 90 4개)": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 198000},
+    "순정연동 SE 모듈 1개 세트 (SE 모듈, 110 1개, 90 4개, 30 1개)": {"category": "모듈 (세트,단품)", "image": "se", "price": 309000},
+    "유니버셜 se 모듈 1개 세트 (SE 모듈,블루투스 모듈, 110 1개, 90 4개, 30 1개)": {"category": "모듈 (세트,단품)", "image": "seset", "price": 369000},
     "순정연동 블루투스 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "uni", "price": 55000},
     "순정연동 RGB 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "rgbb", "price": 65000},
     "순정연동 SE 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "see", "price": 150000},
@@ -176,15 +168,9 @@ def add_to_cart():
         messagebox.showwarning("오류", "수량은 1 이상의 숫자로 입력하세요.")
         return
 
-    to_add = []
-    if item in set_rules:
-        for s in set_rules[item]:
-            name = s.replace(" 4개", "").replace(" 2개", "").strip()
-            count = 4 if "4개" in s else (2 if "2개" in s else 1)
-            to_add.append((name, qty * count))
-    else:
-        key = item.replace("(품절)", "").strip()
-        to_add.append((key, qty))
+    # 단품 및 세트를 분해하지 않고 그대로 장바구니에 추가합니다.
+    key = item.replace("(품절)", "").strip()
+    to_add = [(key, qty)]
 
     for name, add_qty in to_add:
         unit_price = _catalog_price(name)
