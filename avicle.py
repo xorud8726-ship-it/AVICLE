@@ -31,16 +31,16 @@ ITEMS: List[Dict[str, str]] = [
 
     # 모듈 (세트,단품)
     {"id":"haodeng_bt","name":"RGB 블루투스 모듈(하우동)","category":"모듈 (세트,단품)","image":"haodeng", "price": "20000"},
-    {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110", "price": "175000"},
-    {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트","category":"모듈 (세트,단품)","image":"rgb110", "price": "268000"},
-    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":"rgb110", "price": "358000"},
-    {"id":"universal_se_set","name":"유니버셜 se 모듈 1개 세트","category":"모듈 (세트,단품)","image":"seset", "price": "318000"},
+    {"id":"oem_rgb_set","name":"순정연동 RGB 모듈 1개 세트(RGB 모듈,110 1개 ,90 4개)","category":"모듈 (세트,단품)","image":"rgb110", "price": "175000"},
+    {"id":"oem_se_set","name":"순정연동 SE 모듈 1개 세트(se 모듈,110 1개 ,90 4개)","category":"모듈 (세트,단품)","image":"rgb110", "price": "268000"},
+    {"id":"oem_v4_set","name":"순정연동 V4 모듈 1개 세트 (v4 모듈,110 1개 ,90 4개) (품절)","category":"모듈 (세트,단품)","image":"rgb110", "price": "358000"},
+    {"id":"universal_se_set","name":"유니버셜 se 모듈 1개 세트 (se 모듈 ,블루투스 모듈, 110 1개, 90 4개)","category":"모듈 (세트,단품)","image":"seset", "price": "318000"},
     {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb", "price": "60000"},
     {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se", "price": "130000"},
     {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4", "price": "220000"},
     {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni", "price": "230000"},
-    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (품절)","category":"모듈 (세트,단품)","image":"", "price": "454500"},
-    {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트","category":"모듈 (세트,단품)","image":"", "price": "373500"},
+    {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (v4 pro 모듈,110 1개 ,90 4개 ,50 2개, 30 2개) (품절)","category":"모듈 (세트,단품)","image":"", "price": "454500"},
+    {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트 (se pro 모듈,110 1개 ,90 4개 ,50 2개, 30 2개)","category":"모듈 (세트,단품)","image":"", "price": "373500"},
     {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4", "price": "270000"},
     {"id":"oem_se_pro_single","name":"순정연동 SE PRO 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se", "price": "180000"},
 
@@ -98,6 +98,7 @@ ITEMS: List[Dict[str, str]] = [
 ]
 
 # 세트 구성 규칙 (id 기반) : "세트ID": [("구성ID", 개수), ...]
+# (장바구니 로직이 변경되어 더 이상 사용되지 않지만, 참고용으로 유지합니다)
 SET_RULES: Dict[str, List[Tuple[str, int]]] = {
     "oem_rgb_set": [
         ("oem_rgb_single", 1),
@@ -560,13 +561,12 @@ class OrderApp:
         item_id = NAME_TO_ID.get(name)
         if not item_id: return
 
-        # 세트 상품 여부와 관계없이 개별 단가 계산을 위해 확장 처리
-        for add_id, add_qty in self.expand_set_items(item_id, qty):
-            target_item = ITEMS_BY_ID.get(add_id, {})
-            display_name = target_item.get("name", add_id)
-            unit_price = int(target_item.get("price", 0))
-            self._merge_cart(display_name, add_qty, unit_price)
+        # 단품이든 세트든 쪼개지 않고 해당 상품/가격 그대로 장바구니에 추가
+        target_item = ITEMS_BY_ID.get(item_id, {})
+        display_name = target_item.get("name", name)
+        unit_price = int(target_item.get("price", 0))
         
+        self._merge_cart(display_name, qty, unit_price)
         self.update_cart_total()
 
     def _merge_cart(self, name: str, add_qty: int, unit_price: int):
