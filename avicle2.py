@@ -144,6 +144,26 @@ def update_submenu(event=None):
     sub_combo.set("세부 품목 선택")
 
 def update_totals():
+    # --- 택배비 자동 추가/삭제 로직 ---
+    all_iids = cart_tree.get_children()
+    # 택배비를 제외한 실제 품목 리스트
+    actual_items = [iid for iid in all_iids if cart_tree.item(iid, "values")[0] != "택배비"]
+    
+    if actual_items:
+        # 실제 품목이 있는데 택배비가 없으면 최상단(index 0)에 삽입
+        has_shipping = any(cart_tree.item(iid, "values")[0] == "택배비" for iid in all_iids)
+        if not has_shipping:
+            s_price = 4000
+            s_vat = 400
+            s_total = 4400
+            cart_tree.insert("", 0, values=("택배비", 1, "4,000", s_price, s_vat, s_total))
+    else:
+        # 실제 품목이 하나도 없으면 택배비 삭제
+        for iid in all_iids:
+            if cart_tree.item(iid, "values")[0] == "택배비":
+                cart_tree.delete(iid)
+
+    # --- 금액 합계 계산 ---
     total = 0
     total_vat = 0
     for iid in cart_tree.get_children():
@@ -202,6 +222,9 @@ def remove_from_cart(silent_if_empty=False):
         messagebox.showwarning("오류", "삭제할 항목을 선택하세요.")
         return
     for iid in sel:
+        # 택배비는 직접 삭제 불가 로직
+        if cart_tree.item(iid, "values")[0] == "택배비":
+            continue
         cart_tree.delete(iid)
     update_totals()
 
@@ -232,7 +255,10 @@ def submit_order():
     if not dealer or not phone or not addr:
         messagebox.showwarning("오류", "업체명, 전화번호, 주소 모두 입력하세요.")
         return
-    if not cart_tree.get_children():
+        
+    # 실제 주문 품목이 있는지 확인 (택배비 제외)
+    has_actual = any(cart_tree.item(iid, "values")[0] != "택배비" for iid in cart_tree.get_children())
+    if not has_actual:
         messagebox.showwarning("오류", "장바구니가 비어 있습니다.")
         return
 
@@ -267,9 +293,9 @@ def submit_order():
     tg_lines.extend([
         "🛒 주문 품목:",
         *order_lines, "",
-        f"총액: {format_won(total)}",
+        f"총액(VAT별도): {format_won(total)}",
         f"VAT(10%): {format_won(total_vat)}",
-        f"합계: {format_won(grand_total)}",
+        f"합계(총합): {format_won(grand_total)}",
     ])
     tg_msg = "\n".join(tg_lines)
 
@@ -330,6 +356,7 @@ def open_item_image(event):
     if not sel:
         return
     name = cart_tree.item(sel[0], "values")[0]
+    if name == "택배비": return # 택배비는 이미지 없음
     image_key = _catalog_image(name)
     if not image_key:
         messagebox.showinfo("이미지 없음", "이미지가 없습니다.")
