@@ -40,7 +40,7 @@ ITEMS: List[Dict[str, str]] = [
     {"id":"oem_rgb_single","name":"순정연동 RGB 모듈 1개 단품","category":"모듈 (세트,단품)","image":"rgb", "price": "60000"},
     {"id":"oem_se_single","name":"순정연동 SE 모듈 1개 단품","category":"모듈 (세트,단품)","image":"se", "price": "130000"},
     {"id":"oem_v4_single","name":"순정연동 V4 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4", "price": "220000"},
-    {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni", "price": "230000"},
+    {"id":"universal_se_single","name":"순정연동 어플 1개 단품","category":"모듈 (세트,단품)","image":"uni", "price": "50000"},
     {"id":"oem_v4_pro_set","name":"순정연동 V4 PRO 모듈 1개 세트 (v4 pro 모듈,110 1개 ,90 4개 ,50 2개, 30 2개) (품절)","category":"모듈 (세트,단품)","image":"", "price": "454500"},
     {"id":"oem_se_pro_set","name":"순정연동 SE PRO 모듈 1개 세트 (se pro 모듈,110 1개 ,90 4개 ,50 2개, 30 2개)","category":"모듈 (세트,단품)","image":"", "price": "373500"},
     {"id":"oem_v4_pro_single","name":"순정연동 V4 PRO 모듈 1개 단품 (품절)","category":"모듈 (세트,단품)","image":"v4", "price": "270000"},
