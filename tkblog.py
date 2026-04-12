@@ -18,12 +18,17 @@ from pynput.keyboard import Key, Controller
 from PIL import Image
 
 # HEIC / HEIF 지원
+HEIC_AVAILABLE = False
+HEIC_ERROR = ""
+
 try:
     from pillow_heif import register_heif_opener
     register_heif_opener()
     HEIC_AVAILABLE = True
-except Exception:
+except Exception as e:
     HEIC_AVAILABLE = False
+    HEIC_ERROR = str(e)
+    print("pillow_heif import 실패:", e)
 
 
 # ---------------- 전역 설정 및 변수 ----------------
@@ -1691,7 +1696,12 @@ tk.Label(tab3, text="폴더 선택", font=("맑은 고딕", 10, "bold")).pack(pa
 tk.Button(tab3, text="폴더 선택", command=img_select_folder, width=15).pack()
 tk.Label(tab3, textvariable=img_folder_path, fg="blue", wraplength=550).pack(pady=5)
 
-heic_text = "HEIC 지원 활성화됨" if HEIC_AVAILABLE else "HEIC 지원 비활성화됨 (pillow-heif 설치 필요)"
+if HEIC_AVAILABLE:
+    heic_text = "HEIC 지원 활성화됨"
+    heic_color = "green"
+else:
+    heic_text = f"HEIC 지원 비활성화됨: {HEIC_ERROR}" if HEIC_ERROR else "HEIC 지원 비활성화됨"
+    heic_color = "red"
 heic_color = "green" if HEIC_AVAILABLE else "red"
 tk.Label(tab3, text=heic_text, fg=heic_color, font=("맑은 고딕", 9, "bold")).pack(pady=2)
 
