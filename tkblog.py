@@ -15,7 +15,7 @@ import pyperclip
 import pygetwindow as gw
 from pynput import keyboard
 from pynput.keyboard import Key, Controller
-from PIL import Image
+from PIL import Image, ImageOps
 
 # HEIC / HEIF 지원
 HEIC_AVAILABLE = False
@@ -179,6 +179,12 @@ SEARCH_INTERVAL = 0.25
 DEFAULT_PHONE_NUMBER = "010-8075-8066"
 DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
+
+DEFAULT_WATERMARK_FILENAME = "Gemini_Generated_Image_owskk1owskk1owsk.png"
+DEFAULT_WATERMARK_SCALE_RATIO = 0.27
+DEFAULT_WATERMARK_TOP_MARGIN_PX = 0
+DEFAULT_WATERMARK_RIGHT_MARGIN_PX = 0
+
 kb_controller = Controller()
 
 
@@ -267,6 +273,7 @@ def clear_current_input_field() -> None:
 def save_config():
     data = {
         "folder_path": img_folder_path.get(),
+        "watermark_path": img_watermark_path.get().strip(),
         "prompt_templates": prompt_templates,
         "prompt_button_names": prompt_button_names,
         "phone_number_1": phone_number_var_1.get().strip(),
@@ -300,6 +307,7 @@ def load_config():
             data = json.load(f)
 
         img_folder_path.set(data.get("folder_path", ""))
+        img_watermark_path.set(str(data.get("watermark_path", get_default_watermark_path())).strip())
 
         legacy_prompt = data.get("prompt_template")
         if legacy_prompt:
@@ -1334,6 +1342,54 @@ def refresh_prompt_buttons():
 
 
 # ---------------- [탭 3] 이미지 일괄 변환 및 이름 변경 ----------------
+def get_default_watermark_path():
+    return os.path.join(BASE_DIR, DEFAULT_WATERMARK_FILENAME)
+
+
+def ensure_rgba(img: Image.Image) -> Image.Image:
+    if img.mode != "RGBA":
+        return img.convert("RGBA")
+    return img
+
+
+def trim_transparent_edges(img: Image.Image) -> Image.Image:
+    img = ensure_rgba(img)
+    alpha = img.getchannel("A")
+    bbox = alpha.getbbox()
+    if bbox:
+        return img.crop(bbox)
+    return img
+
+
+def load_image_with_exif_fix(path: str) -> Image.Image:
+    img = Image.open(path)
+    img = ImageOps.exif_transpose(img)
+    return img
+
+
+def apply_top_right_watermark(base_img: Image.Image, watermark_img: Image.Image) -> Image.Image:
+    base = ensure_rgba(base_img.copy())
+    watermark = trim_transparent_edges(watermark_img.copy())
+
+    base_w, base_h = base.size
+    wm_w, wm_h = watermark.size
+
+    if base_w <= 0 or base_h <= 0 or wm_w <= 0 or wm_h <= 0:
+        return base
+
+    target_wm_width = max(1, int(base_w * DEFAULT_WATERMARK_SCALE_RATIO))
+    new_w = target_wm_width
+    new_h = max(1, int(wm_h * (new_w / wm_w)))
+    watermark = watermark.resize((new_w, new_h), Image.LANCZOS)
+
+    wm_w, wm_h = watermark.size
+    x = max(0, base_w - wm_w - DEFAULT_WATERMARK_RIGHT_MARGIN_PX)
+    y = max(0, DEFAULT_WATERMARK_TOP_MARGIN_PX)
+
+    base.alpha_composite(watermark, (x, y))
+    return base
+
+
 def get_image_files(folder: str):
     files = []
     for file_name in os.listdir(folder):
@@ -1350,9 +1406,23 @@ def img_select_folder():
         save_config()
 
 
+def img_select_watermark():
+    file_path = filedialog.askopenfilename(
+        title="워터마크 이미지 선택",
+        filetypes=[
+            ("이미지 파일", "*.png;*.jpg;*.jpeg;*.webp;*.bmp"),
+            ("모든 파일", "*.*"),
+        ],
+    )
+    if file_path:
+        img_watermark_path.set(file_path)
+        save_config()
+
+
 def start_img_process():
     folder = img_folder_path.get().strip()
     keyword_input = img_keywords.get().strip()
+    watermark_path = img_watermark_path.get().strip()
 
     if not folder or not os.path.exists(folder):
         messagebox.showerror("오류", "폴더를 먼저 선택해주세요.")
@@ -1360,6 +1430,10 @@ def start_img_process():
 
     if not keyword_input:
         messagebox.showerror("오류", "키워드를 입력해주세요.")
+        return
+
+    if not watermark_path or not os.path.isfile(watermark_path):
+        messagebox.showerror("오류", "워터마크 이미지를 먼저 선택해주세요.")
         return
 
     if not HEIC_AVAILABLE:
@@ -1389,6 +1463,13 @@ def start_img_process():
     base_name = "_".join(keywords)
 
     try:
+        watermark_source = load_image_with_exif_fix(watermark_path).convert("RGBA")
+        watermark_source = trim_transparent_edges(watermark_source)
+    except Exception as e:
+        messagebox.showerror("오류", f"워터마크 이미지 로드 실패:\n{str(e)}")
+        return
+
+    try:
         total = len(image_files)
         count = 1
 
@@ -1397,8 +1478,9 @@ def start_img_process():
             new_filename = f"{base_name}_{count}.jpg"
             new_path = os.path.join(folder, new_filename)
 
-            with Image.open(old_path) as img:
-                rgb_img = img.convert("RGB")
+            with load_image_with_exif_fix(old_path) as img:
+                result_img = apply_top_right_watermark(img, watermark_source)
+                rgb_img = result_img.convert("RGB")
                 rgb_img.save(new_path, "JPEG", quality=100)
 
             if os.path.abspath(old_path) != os.path.abspath(new_path):
@@ -1408,10 +1490,11 @@ def start_img_process():
             root.update_idletasks()
             count += 1
 
-        img_status_var.set("완료되었습니다.")
-        messagebox.showinfo("완료", "모든 이미지가 변환 및 이름 변경되었습니다.")
+        img_status_var.set("완료되었습니다. 이름 변경 + JPG 변환 + 워터마크 삽입 완료")
+        messagebox.showinfo("완료", "모든 이미지가 변환, 이름 변경, 워터마크 삽입까지 완료되었습니다.")
     except Exception as e:
         messagebox.showerror("오류", f"처리 중 오류 발생:\n{str(e)}")
+
 
 
 # ---------------- GUI ----------------
@@ -1687,6 +1770,7 @@ tab3 = tk.Frame(notebook)
 notebook.add(tab3, text="이미지 일괄 변환 및 이름 변경")
 
 img_folder_path = tk.StringVar()
+img_watermark_path = tk.StringVar(value=get_default_watermark_path())
 img_keywords = tk.StringVar()
 img_status_var = tk.StringVar()
 
@@ -1694,7 +1778,18 @@ load_config()
 
 tk.Label(tab3, text="폴더 선택", font=("맑은 고딕", 10, "bold")).pack(pady=10)
 tk.Button(tab3, text="폴더 선택", command=img_select_folder, width=15).pack()
-tk.Label(tab3, textvariable=img_folder_path, fg="blue", wraplength=550).pack(pady=5)
+tk.Label(tab3, textvariable=img_folder_path, fg="blue", wraplength=700).pack(pady=5)
+
+tk.Label(tab3, text="워터마크 이미지 선택", font=("맑은 고딕", 10, "bold")).pack(pady=(12, 6))
+tk.Button(tab3, text="워터마크 선택", command=img_select_watermark, width=15).pack()
+tk.Label(tab3, textvariable=img_watermark_path, fg="#6f42c1", wraplength=700).pack(pady=5)
+
+tk.Label(
+    tab3,
+    text="워터마크는 오른쪽 상단에 자동 삽입됩니다. 투명 여백은 자동 제거되며, 이전 요청값대로 더 크게 붙습니다.",
+    fg="#0d6efd",
+    font=("맑은 고딕", 9, "bold"),
+).pack(pady=3)
 
 if HEIC_AVAILABLE:
     heic_text = "HEIC 지원 활성화됨"
