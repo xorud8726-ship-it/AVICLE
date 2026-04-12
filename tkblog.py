@@ -8,6 +8,7 @@ import subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk, simpledialog, filedialog
 from typing import Optional
+import ctypes
 
 import pyautogui
 import pyperclip
@@ -44,6 +45,7 @@ pyautogui.FAILSAFE = True
 
 # 현재 선택된 txt 파일명
 current_selected_file = None
+preferred_chrome_hwnd = None
 
 DEFAULT_PROMPT_TEMPLATE = """Convert the following YouTube script into a Naver blog post optimized for TOP search ranking.
 
@@ -158,16 +160,102 @@ URL_TEMPLATE = os.path.join(BASE_DIR, "url.png")
 WIN_X, WIN_Y = 0, 0
 WIN_W, WIN_H = 837, 1037
 
-NAVER_ID = "uc8086"
-NAVER_PASSWORD = "QKRtnqls1!"
-
-BLOG_WRITE_URL = "https://blog.naver.com/uc8086?Redirect=Write&"
+DEFAULT_NAVER_ID_1 = ""
+DEFAULT_NAVER_PASSWORD_1 = ""
+DEFAULT_BLOG_WRITE_URL_1 = ""
+DEFAULT_NAVER_ID_2 = ""
+DEFAULT_NAVER_PASSWORD_2 = ""
+DEFAULT_BLOG_WRITE_URL_2 = ""
+BLOG_STORAGE_MARKER_TITLE = "\n<<<BLOG2_TITLE>>>\n"
+BLOG_STORAGE_MARKER_BODY = "\n<<<BLOG2_BODY>>>\n"
 
 DEFAULT_CONFIDENCE = 0.85
 SEARCH_INTERVAL = 0.25
 DEFAULT_PHONE_NUMBER = "010-8075-8066"
+DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
 kb_controller = Controller()
+
+
+# ---------------- 입력 유틸 ----------------
+user32 = ctypes.WinDLL("user32", use_last_error=True)
+VK_CAPITAL = 0x14
+VK_HANGUL = 0x15
+KEYEVENTF_KEYUP = 0x0002
+
+
+def is_capslock_on() -> bool:
+    try:
+        return bool(user32.GetKeyState(VK_CAPITAL) & 0x0001)
+    except Exception:
+        return False
+
+
+def press_virtual_key(vk_code: int) -> None:
+    try:
+        user32.keybd_event(vk_code, 0, 0, 0)
+        time.sleep(0.03)
+        user32.keybd_event(vk_code, 0, KEYEVENTF_KEYUP, 0)
+        time.sleep(0.05)
+    except Exception:
+        pass
+
+
+def ensure_capslock_off() -> None:
+    if is_capslock_on():
+        press_virtual_key(VK_CAPITAL)
+        time.sleep(0.05)
+
+
+def text_needs_hangul_mode(text: str) -> bool:
+    return any("가" <= ch <= "힣" or "ㄱ" <= ch <= "ㅎ" or "ㅏ" <= ch <= "ㅣ" for ch in text)
+
+
+def text_needs_english_mode(text: str) -> bool:
+    return any(("a" <= ch.lower() <= "z") for ch in text)
+
+
+def ensure_input_mode_for_text(text: str) -> None:
+    ensure_capslock_off()
+    try:
+        if text_needs_hangul_mode(text):
+            if user32.GetKeyboardLayout(0) & 0xFFFF == 0x0412:
+                pass
+            else:
+                press_virtual_key(VK_HANGUL)
+        elif text_needs_english_mode(text):
+            if user32.GetKeyboardLayout(0) & 0xFFFF == 0x0412:
+                press_virtual_key(VK_HANGUL)
+    except Exception:
+        pass
+
+
+def paste_text_safely(text: str) -> None:
+    ensure_input_mode_for_text(text)
+    try:
+        previous_clipboard = pyperclip.paste()
+    except Exception:
+        previous_clipboard = None
+
+    try:
+        pyperclip.copy(text)
+        time.sleep(0.05)
+        pyautogui.hotkey("ctrl", "v")
+        time.sleep(0.08)
+    finally:
+        if previous_clipboard is not None:
+            try:
+                pyperclip.copy(previous_clipboard)
+            except Exception:
+                pass
+
+
+def clear_current_input_field() -> None:
+    ensure_capslock_off()
+    pyautogui.hotkey("ctrl", "a")
+    time.sleep(0.05)
+    pyautogui.press("backspace")
+    time.sleep(0.08)
 
 
 # ---------------- [공통] 설정 저장/불러오기 ----------------
@@ -176,7 +264,16 @@ def save_config():
         "folder_path": img_folder_path.get(),
         "prompt_templates": prompt_templates,
         "prompt_button_names": prompt_button_names,
-        "phone_number": phone_number_var.get().strip(),
+        "phone_number_1": phone_number_var_1.get().strip(),
+        "phone_number_2": phone_number_var_2.get().strip(),
+        "naver_id_1": naver_id_var_1.get().strip(),
+        "naver_password_1": naver_password_var_1.get().strip(),
+        "blog_write_url_1": blog_write_url_var_1.get().strip(),
+        "naver_id_2": naver_id_var_2.get().strip(),
+        "naver_password_2": naver_password_var_2.get().strip(),
+        "blog_write_url_2": blog_write_url_var_2.get().strip(),
+        "blog_run_mode": int(blog_run_mode_var.get()),
+        "speed_cpm": int(speed_scale.get()),
     }
     try:
         config_path = os.path.join(BASE_DIR, CONFIG_FILE)
@@ -215,12 +312,34 @@ def load_config():
                 if i < len(loaded_names) and str(loaded_names[i]).strip():
                     prompt_button_names[i] = str(loaded_names[i]).strip()
 
-        loaded_phone_number = str(data.get("phone_number", DEFAULT_PHONE_NUMBER)).strip()
-        if loaded_phone_number:
-            phone_number_var.set(loaded_phone_number)
+        loaded_phone_number_1 = str(data.get("phone_number_1", DEFAULT_PHONE_NUMBER)).strip()
+        if loaded_phone_number_1:
+            phone_number_var_1.set(loaded_phone_number_1)
+
+        loaded_phone_number_2 = str(data.get("phone_number_2", DEFAULT_PHONE_NUMBER)).strip()
+        if loaded_phone_number_2:
+            phone_number_var_2.set(loaded_phone_number_2)
+
+        naver_id_var_1.set(str(data.get("naver_id_1", DEFAULT_NAVER_ID_1)).strip())
+        naver_password_var_1.set(str(data.get("naver_password_1", DEFAULT_NAVER_PASSWORD_1)).strip())
+        blog_write_url_var_1.set(str(data.get("blog_write_url_1", DEFAULT_BLOG_WRITE_URL_1)).strip())
+        naver_id_var_2.set(str(data.get("naver_id_2", DEFAULT_NAVER_ID_2)).strip())
+        naver_password_var_2.set(str(data.get("naver_password_2", DEFAULT_NAVER_PASSWORD_2)).strip())
+        blog_write_url_var_2.set(str(data.get("blog_write_url_2", DEFAULT_BLOG_WRITE_URL_2)).strip())
+        blog_run_mode_var.set(int(data.get("blog_run_mode", 1)))
+        speed_scale.set(int(data.get("speed_cpm", DEFAULT_SPEED_CPM)))
+        update_speed_label()
 
     except Exception:
         pass
+
+
+def update_speed_label(value=None):
+    try:
+        current_value = int(float(speed_scale.get()))
+    except Exception:
+        current_value = DEFAULT_SPEED_CPM
+    speed_value_var.set(f"현재 타수: {current_value} CPM")
 
 
 # ---------------- [공통] 상태 업데이트 ----------------
@@ -234,7 +353,25 @@ def get_txt_folder():
     return BASE_DIR
 
 
-def split_title_and_body(raw_text: str):
+def split_blog_file_content(raw_text: str):
+    raw_text = raw_text.replace("\r\n", "\n")
+
+    if BLOG_STORAGE_MARKER_TITLE in raw_text and BLOG_STORAGE_MARKER_BODY in raw_text:
+        try:
+            blog1_raw, rest = raw_text.split(BLOG_STORAGE_MARKER_TITLE, 1)
+            blog2_title_raw, blog2_body_raw = rest.split(BLOG_STORAGE_MARKER_BODY, 1)
+            title1, body1 = split_legacy_title_and_body(blog1_raw)
+            title2 = blog2_title_raw.strip()
+            body2 = blog2_body_raw.lstrip("\n")
+            return title1, body1, title2, body2
+        except Exception:
+            pass
+
+    title1, body1 = split_legacy_title_and_body(raw_text)
+    return title1, body1, "", ""
+
+
+def split_legacy_title_and_body(raw_text: str):
     raw_text = raw_text.replace("\r\n", "\n")
     lines = raw_text.split("\n")
 
@@ -246,7 +383,18 @@ def split_title_and_body(raw_text: str):
     return title, body
 
 
-def combine_title_and_body(title: str, body: str):
+def combine_blog_file_content(title1: str, body1: str, title2: str, body2: str):
+    primary = combine_legacy_title_and_body(title1, body1)
+    title2 = title2.rstrip()
+    body2 = body2.rstrip()
+
+    if not title2 and not body2:
+        return primary
+
+    return f"{primary}{BLOG_STORAGE_MARKER_TITLE}{title2}{BLOG_STORAGE_MARKER_BODY}{body2}"
+
+
+def combine_legacy_title_and_body(title: str, body: str):
     title = title.rstrip()
     body = body.rstrip()
 
@@ -255,6 +403,15 @@ def combine_title_and_body(title: str, body: str):
     if title:
         return title
     return body
+
+
+def get_title_and_content_values():
+    return (
+        title_var_1.get().strip(),
+        editor_1.get("1.0", tk.END).rstrip(),
+        title_var_2.get().strip(),
+        editor_2.get("1.0", tk.END).rstrip(),
+    )
 
 
 def load_txt_files(restore_selection=True):
@@ -308,14 +465,13 @@ def save_txt_file():
         messagebox.showwarning("알림", "저장할 파일을 선택하세요.")
         return
 
-    title = title_var.get().strip()
-    content = editor.get("1.0", tk.END).rstrip()
+    title1, content1, title2, content2 = get_title_and_content_values()
 
-    if not title and not content:
+    if not title1 and not content1 and not title2 and not content2:
         messagebox.showwarning("알림", "제목 또는 내용을 입력하세요.")
         return
 
-    save_text = combine_title_and_body(title, content)
+    save_text = combine_blog_file_content(title1, content1, title2, content2)
 
     try:
         full_path = os.path.join(get_txt_folder(), file_name)
@@ -419,11 +575,15 @@ def on_select_txt(event=None):
         with open(full_path, "r", encoding="utf-8") as f:
             raw_text = f.read()
 
-        title, body = split_title_and_body(raw_text)
+        title1, body1, title2, body2 = split_blog_file_content(raw_text)
 
-        title_var.set(title)
-        editor.delete("1.0", tk.END)
-        editor.insert("1.0", body)
+        title_var_1.set(title1)
+        editor_1.delete("1.0", tk.END)
+        editor_1.insert("1.0", body1)
+
+        title_var_2.set(title2)
+        editor_2.delete("1.0", tk.END)
+        editor_2.insert("1.0", body2)
 
         set_status(f"선택됨: {file_name}")
         keep_listbox_selection()
@@ -435,13 +595,16 @@ def on_listbox_focus_out(event=None):
     root.after(10, keep_listbox_selection)
 
 
-def get_phone_number() -> str:
-    value = phone_number_var.get().strip()
+def get_phone_number(blog_index: int) -> str:
+    if blog_index == 2:
+        value = phone_number_var_2.get().strip()
+    else:
+        value = phone_number_var_1.get().strip()
     return value or DEFAULT_PHONE_NUMBER
 
 
-def get_tel_link() -> str:
-    return f"TEL:{get_phone_number()}"
+def get_tel_link(blog_index: int) -> str:
+    return f"TEL:{get_phone_number(blog_index)}"
 
 
 def select_recent_typed_text(char_count: int) -> None:
@@ -462,7 +625,7 @@ def select_recent_typed_text(char_count: int) -> None:
     time.sleep(0.2)
 
 
-def run_estimate_link_action() -> None:
+def run_estimate_link_action(blog_index: int = 1) -> None:
     set_status("견적상담하기 링크 작업 중...")
 
     select_recent_typed_text(len(SPECIAL_LINK_TEXT))
@@ -474,7 +637,7 @@ def run_estimate_link_action() -> None:
         raise RuntimeError("url.png 이미지를 찾지 못했습니다.")
 
     time.sleep(0.2)
-    pyperclip.copy(get_tel_link())
+    pyperclip.copy(get_tel_link(blog_index))
     pyautogui.hotkey("ctrl", "v")
     time.sleep(0.15)
     pyautogui.press("enter")
@@ -483,7 +646,7 @@ def run_estimate_link_action() -> None:
     time.sleep(0.2)
 
 
-def human_like_typing(text: str):
+def human_like_typing(text: str, blog_index: int = 1):
     global stop_flag
 
     if not text:
@@ -507,7 +670,7 @@ def human_like_typing(text: str):
                 pyautogui.hotkey("ctrl", "v")
                 time.sleep(delay * random.uniform(0.8, 1.2))
 
-            run_estimate_link_action()
+            run_estimate_link_action(blog_index)
             index += len(SPECIAL_LINK_TEXT)
             continue
 
@@ -557,21 +720,46 @@ def force_chrome_window_geometry(window) -> None:
         pass
 
 
-def activate_chrome_window() -> bool:
+def get_chrome_windows():
+    seen = set()
+    windows = []
     for title_fragment in ("Chrome", "네이버", "Naver", "naver.com"):
-        wins = gw.getWindowsWithTitle(title_fragment)
-        for w in wins:
-            try:
-                if w.isMinimized:
-                    w.restore()
-                    time.sleep(0.15)
-
-                w.activate()
-                time.sleep(0.2)
-                force_chrome_window_geometry(w)
-                return True
-            except Exception:
+        for w in gw.getWindowsWithTitle(title_fragment):
+            hwnd = getattr(w, "_hWnd", None)
+            if hwnd in seen:
                 continue
+            seen.add(hwnd)
+            windows.append(w)
+    return windows
+
+
+def activate_specific_chrome_window(window) -> bool:
+    if window is None:
+        return False
+    try:
+        if window.isMinimized:
+            window.restore()
+            time.sleep(0.15)
+        window.activate()
+        time.sleep(0.2)
+        force_chrome_window_geometry(window)
+        return True
+    except Exception:
+        return False
+
+
+def activate_chrome_window() -> bool:
+    global preferred_chrome_hwnd
+
+    if preferred_chrome_hwnd is not None:
+        for w in get_chrome_windows():
+            if getattr(w, "_hWnd", None) == preferred_chrome_hwnd:
+                if activate_specific_chrome_window(w):
+                    return True
+
+    for w in get_chrome_windows():
+        if activate_specific_chrome_window(w):
+            return True
     return False
 
 
@@ -680,20 +868,32 @@ def click_login_template() -> bool:
     return click_image_forever(LOGIN_TEMPLATE, confidence=0.85)
 
 
-def type_login_credentials() -> None:
+def type_login_credentials(naver_id: str, naver_password: str) -> None:
     time.sleep(1.0)
-    pyautogui.write(NAVER_ID, interval=0.02)
+
+    clear_current_input_field()
+    paste_text_safely(naver_id)
+
     pyautogui.press("tab", presses=2)
-    pyautogui.write(NAVER_PASSWORD, interval=0.02)
+    time.sleep(0.15)
+
+    clear_current_input_field()
+    paste_text_safely(naver_password)
+
     pyautogui.press("enter")
 
 
 def click_emdfhr_after_login() -> bool:
-    time.sleep(2.5)
-    return click_image_forever(EMDFHR_TEMPLATE, confidence=0.85)
+    time.sleep(2.0)
+    return click_image_limited(
+        EMDFHR_TEMPLATE,
+        attempts=3,
+        confidence=0.85,
+        delay_sec=0.5,
+    )
 
 
-def navigate_to_blog_write() -> None:
+def navigate_to_blog_write(blog_write_url: str) -> None:
     time.sleep(1.5)
     activate_chrome_window()
     time.sleep(0.15)
@@ -701,7 +901,7 @@ def navigate_to_blog_write() -> None:
     time.sleep(0.15)
     pyautogui.hotkey("ctrl", "a")
     time.sleep(0.05)
-    pyautogui.write(BLOG_WRITE_URL, interval=0.02)
+    paste_text_safely(blog_write_url)
     pyautogui.press("enter")
 
 
@@ -729,13 +929,13 @@ def dismiss_help_popup_or_arrow_up() -> None:
         return
 
     region = get_search_region()
-    end_time = time.time() + 3.0
     found = None
 
-    while time.time() < end_time:
+    for _ in range(3):
         if stop_flag:
             return
 
+        activate_chrome_window()
         try:
             found = pyautogui.locateOnScreen(
                 HELP_HEADER_TEMPLATE,
@@ -786,99 +986,146 @@ def run_se_action() -> bool:
     return True
 
 
-def run_pre_typing_action() -> None:
+def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: str, blog_label: str, use_incognito: bool = True) -> None:
+    global preferred_chrome_hwnd
+
     chrome = find_chrome()
     if not chrome:
         raise RuntimeError("Chrome 설치 경로를 찾을 수 없습니다.")
 
-    set_status("사전 작업: 크롬 실행 중...")
-    subprocess.Popen(
-        [
-            chrome,
-            "--incognito",
-            "--new-window",
-            f"--window-size={WIN_W},{WIN_H}",
-            f"--window-position={WIN_X},{WIN_Y}",
-            "https://www.naver.com",
-        ]
-    )
+    if not naver_id:
+        raise RuntimeError(f"{blog_label} 네이버 아이디를 입력하세요.")
+    if not naver_password:
+        raise RuntimeError(f"{blog_label} 네이버 비밀번호를 입력하세요.")
+    if not blog_write_url:
+        raise RuntimeError(f"{blog_label} 블로그 글쓰기 주소를 입력하세요.")
 
+    before_hwnds = {getattr(w, "_hWnd", None) for w in get_chrome_windows()}
+
+    launch_cmd = [
+        chrome,
+        "--new-window",
+        f"--window-size={WIN_W},{WIN_H}",
+        f"--window-position={WIN_X},{WIN_Y}",
+        "https://www.naver.com",
+    ]
+    if use_incognito:
+        launch_cmd.insert(1, "--incognito")
+        set_status(f"{blog_label} 사전 작업: 시크릿 크롬 창 실행 중...")
+    else:
+        set_status(f"{blog_label} 사전 작업: 일반 크롬 창 실행 중...")
+
+    subprocess.Popen(launch_cmd)
     time.sleep(3.0)
 
-    set_status("사전 작업: 크롬 창 활성화 중...")
-    if not activate_chrome_window():
-        time.sleep(0.8)
+    target_window = None
+    deadline = time.time() + 8.0
+    while time.time() < deadline:
+        if stop_flag:
+            return
+        current_windows = get_chrome_windows()
+        new_windows = [w for w in current_windows if getattr(w, "_hWnd", None) not in before_hwnds]
+        if new_windows:
+            target_window = new_windows[-1]
+            break
+        time.sleep(0.2)
+
+    if target_window is None:
+        current_windows = get_chrome_windows()
+        if current_windows:
+            target_window = current_windows[-1]
+
+    if target_window is None:
+        raise RuntimeError(f"{blog_label} 새 크롬 창을 찾지 못했습니다.")
+
+    preferred_chrome_hwnd = getattr(target_window, "_hWnd", None)
+
+    set_status(f"{blog_label} 사전 작업: 크롬 창 활성화 중...")
+    if not activate_specific_chrome_window(target_window):
         activate_chrome_window()
 
     time.sleep(0.2)
 
-    for title_fragment in ("Chrome", "네이버", "Naver", "naver.com"):
-        wins = gw.getWindowsWithTitle(title_fragment)
-        for w in wins:
-            try:
-                if w.isMinimized:
-                    w.restore()
-                    time.sleep(0.1)
-
-                w.activate()
-                time.sleep(0.15)
-                force_chrome_window_geometry(w)
-                break
-            except Exception:
-                continue
-
     if stop_flag:
         return
 
-    set_status("사전 작업: 화면 정렬 중...")
+    set_status(f"{blog_label} 사전 작업: 화면 정렬 중...")
     scroll_horizontal_to_right()
 
     if stop_flag:
         return
 
-    set_status("사전 작업: 로그인 버튼 찾는 중...")
+    set_status(f"{blog_label} 사전 작업: 로그인 버튼 찾는 중...")
     if not click_login_template():
         return
 
     if stop_flag:
         return
 
-    set_status("사전 작업: 로그인 정보 입력 중...")
-    type_login_credentials()
+    set_status(f"{blog_label} 사전 작업: 로그인 정보 입력 중...")
+    type_login_credentials(naver_id, naver_password)
 
     if stop_flag:
         return
 
-    set_status("사전 작업: emdfhr 이미지 찾는 중...")
-    if not click_emdfhr_after_login():
-        return
+    set_status(f"{blog_label} 사전 작업: emdfhr 이미지 확인 중...")
+    click_emdfhr_after_login()
 
     if stop_flag:
         return
 
-    set_status("사전 작업: 블로그 글쓰기 이동 중...")
-    navigate_to_blog_write()
+    set_status(f"{blog_label} 사전 작업: 블로그 글쓰기 이동 중...")
+    navigate_to_blog_write(blog_write_url)
 
     if stop_flag:
         return
 
-    set_status("사전 작업: cnlth 이미지 확인 중...")
+    set_status(f"{blog_label} 사전 작업: cnlth 이미지 확인 중...")
     try_cnlth_before_help_header()
 
     if stop_flag:
         return
 
-    set_status("사전 작업: help_header / 커서 위치 정리 중...")
+    set_status(f"{blog_label} 사전 작업: help_header / 커서 위치 정리 중...")
     dismiss_help_popup_or_arrow_up()
 
     if stop_flag:
         return
 
-    set_status("사전 작업: se 동작 실행 중...")
+    set_status(f"{blog_label} 사전 작업: se 동작 실행 중...")
     if not run_se_action():
         return
 
-    set_status("사전 작업 완료")
+    set_status(f"{blog_label} 사전 작업 완료")
+
+
+def move_to_body_after_title(blog_label: str) -> None:
+    pyautogui.press("enter")
+    if "2" in blog_label:
+        time.sleep(1.8)
+    else:
+        time.sleep(1.2)
+
+
+def run_blog_typing_workflow(blog_label: str, blog_index: int, naver_id: str, naver_password: str, blog_write_url: str, title: str, content: str, use_incognito: bool = True) -> None:
+    run_pre_typing_action(naver_id, naver_password, blog_write_url, blog_label, use_incognito=use_incognito)
+
+    if stop_flag:
+        return
+
+    time.sleep(1.0)
+
+    set_status(f"{blog_label} 제목 입력 중...")
+    human_like_typing(title, blog_index=blog_index)
+
+    if stop_flag:
+        return
+
+    move_to_body_after_title(blog_label)
+
+    if content:
+        set_status(f"{blog_label} 본문 입력 중...")
+        human_like_typing(content, blog_index=blog_index)
 
 
 def start_typing():
@@ -887,16 +1134,24 @@ def start_typing():
     if running:
         return
 
-    title = title_var.get().strip()
-    content = editor.get("1.0", tk.END).rstrip()
+    title1, content1, title2, content2 = get_title_and_content_values()
+    blog_mode = int(blog_run_mode_var.get())
 
-    if not title and not content:
-        messagebox.showwarning("경고", "타이핑할 제목 또는 내용이 없습니다.")
+    if not title1 and not content1:
+        messagebox.showwarning("경고", "첫번째 블로그 제목 또는 내용을 입력하세요.")
         return
 
-    if not title:
-        messagebox.showwarning("경고", "제목을 입력하세요.")
+    if not title1:
+        messagebox.showwarning("경고", "첫번째 블로그 제목을 입력하세요.")
         return
+
+    if blog_mode == 2:
+        if not title2 and not content2:
+            messagebox.showwarning("경고", "두번째 블로그 쓰기를 선택했으면 두번째 제목 또는 내용을 입력하세요.")
+            return
+        if not title2:
+            messagebox.showwarning("경고", "두번째 블로그 제목을 입력하세요.")
+            return
 
     running = True
     stop_flag = False
@@ -912,32 +1167,48 @@ def start_typing():
                 set_status("작업 중지됨")
                 return
 
-            run_pre_typing_action()
+            run_blog_typing_workflow(
+                "블로그 1",
+                1,
+                naver_id_var_1.get().strip(),
+                naver_password_var_1.get().strip(),
+                blog_write_url_var_1.get().strip(),
+                title1,
+                content1,
+                use_incognito=True,
+            )
 
             if stop_flag:
                 set_status("작업 중지됨")
                 return
 
-            time.sleep(1.0)
+            if blog_mode == 2:
+                set_status("블로그 1 완료, 블로그 2 일반 크롬 새 창 준비 중...")
 
-            set_status("제목 입력 중...")
-            human_like_typing(title)
+                if stop_flag:
+                    set_status("작업 중지됨")
+                    return
 
-            if stop_flag:
-                set_status("작업 중지됨")
-                return
+                time.sleep(1.0)
 
-            pyautogui.press("enter")
-            time.sleep(0.4)
-
-            if content:
-                set_status("본문 입력 중...")
-                human_like_typing(content)
+                run_blog_typing_workflow(
+                    "블로그 2",
+                    2,
+                    naver_id_var_2.get().strip(),
+                    naver_password_var_2.get().strip(),
+                    blog_write_url_var_2.get().strip(),
+                    title2,
+                    content2,
+                    use_incognito=False,
+                )
 
             if stop_flag:
                 set_status("작업 중지됨")
             else:
-                set_status("사전 작업 + 타이핑 완료")
+                if blog_mode == 2:
+                    set_status("블로그 1, 2 사전 작업 + 타이핑 완료")
+                else:
+                    set_status("블로그 1 사전 작업 + 타이핑 완료")
 
         except Exception as e:
             set_status("오류 발생")
@@ -1141,7 +1412,7 @@ def start_img_process():
 # ---------------- GUI ----------------
 root = tk.Tk()
 root.title("블로그 마스터 자동화 툴 (통합 버전)")
-root.geometry("980x900")
+root.geometry("1500x960")
 
 notebook = ttk.Notebook(root)
 notebook.pack(fill="both", expand=True)
@@ -1153,8 +1424,60 @@ notebook.add(tab1, text="자동 타이핑 및 파일 관리")
 left_f = tk.Frame(tab1, width=280)
 left_f.pack(side="left", fill="y", padx=10, pady=10)
 
-right_f = tk.Frame(tab1)
-right_f.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+right_container = tk.Frame(tab1)
+right_container.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+right_canvas = tk.Canvas(right_container, highlightthickness=0)
+right_scrollbar = ttk.Scrollbar(right_container, orient="vertical", command=right_canvas.yview)
+right_f = tk.Frame(right_canvas)
+
+right_f.bind(
+    "<Configure>",
+    lambda e: right_canvas.configure(scrollregion=right_canvas.bbox("all"))
+)
+
+right_canvas_window = right_canvas.create_window((0, 0), window=right_f, anchor="nw")
+
+
+def _on_right_canvas_configure(event):
+    right_canvas.itemconfigure(right_canvas_window, width=event.width)
+
+
+right_canvas.bind("<Configure>", _on_right_canvas_configure)
+right_canvas.configure(yscrollcommand=right_scrollbar.set)
+
+right_canvas.pack(side="left", fill="both", expand=True)
+right_scrollbar.pack(side="right", fill="y")
+
+
+def _bind_right_scroll(event=None):
+    right_canvas.bind_all("<MouseWheel>", _on_right_mousewheel)
+    right_canvas.bind_all("<Button-4>", _on_right_mousewheel)
+    right_canvas.bind_all("<Button-5>", _on_right_mousewheel)
+
+
+def _unbind_right_scroll(event=None):
+    right_canvas.unbind_all("<MouseWheel>")
+    right_canvas.unbind_all("<Button-4>")
+    right_canvas.unbind_all("<Button-5>")
+
+
+def _on_right_mousewheel(event):
+    try:
+        if hasattr(event, "delta") and event.delta:
+            right_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        elif getattr(event, "num", None) == 4:
+            right_canvas.yview_scroll(-3, "units")
+        elif getattr(event, "num", None) == 5:
+            right_canvas.yview_scroll(3, "units")
+    except Exception:
+        pass
+
+
+right_canvas.bind("<Enter>", _bind_right_scroll)
+right_canvas.bind("<Leave>", _unbind_right_scroll)
+right_f.bind("<Enter>", _bind_right_scroll)
+right_f.bind("<Leave>", _unbind_right_scroll)
 
 tk.Label(left_f, text="📁 파일 목록", font=("맑은 고딕", 10, "bold")).pack()
 
@@ -1170,39 +1493,122 @@ tk.Button(f_btn_f, text="새 파일", command=create_txt_file).pack(side="left",
 tk.Button(f_btn_f, text="이름 변경", command=rename_txt_file).pack(side="left", expand=True, fill="x")
 tk.Button(left_f, text="목록 새로고침", command=load_txt_files).pack(fill="x")
 
-title_frame = tk.Frame(right_f)
-title_frame.pack(fill="x", pady=(0, 6))
+blog_run_mode_var = tk.IntVar(value=1)
+naver_id_var_1 = tk.StringVar(value=DEFAULT_NAVER_ID_1)
+naver_password_var_1 = tk.StringVar(value=DEFAULT_NAVER_PASSWORD_1)
+blog_write_url_var_1 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_1)
+naver_id_var_2 = tk.StringVar(value=DEFAULT_NAVER_ID_2)
+naver_password_var_2 = tk.StringVar(value=DEFAULT_NAVER_PASSWORD_2)
+blog_write_url_var_2 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_2)
 
-tk.Label(title_frame, text="📰 제목", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
+settings_frame = tk.LabelFrame(right_f, text="블로그 계정 / 실행 설정", padx=10, pady=10)
+settings_frame.pack(fill="x", pady=(0, 8))
 
-title_var = tk.StringVar()
-title_entry = tk.Entry(right_f, textvariable=title_var, font=("맑은 고딕", 11))
-title_entry.pack(fill="x", pady=(0, 8), ipady=6)
+mode_frame = tk.Frame(settings_frame)
+mode_frame.pack(fill="x", pady=(0, 8))
+tk.Label(mode_frame, text="실행 방식", font=("맑은 고딕", 10, "bold")).pack(side="left")
+tk.Radiobutton(mode_frame, text="블로그 1개 쓰기", variable=blog_run_mode_var, value=1, command=save_config).pack(side="left", padx=(15, 10))
+tk.Radiobutton(mode_frame, text="블로그 2개 쓰기", variable=blog_run_mode_var, value=2, command=save_config).pack(side="left")
 
-phone_frame = tk.Frame(right_f)
-phone_frame.pack(fill="x", pady=(0, 8))
+account_wrap = tk.Frame(settings_frame)
+account_wrap.pack(fill="x")
 
-tk.Label(phone_frame, text="📞 전화번호", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
-phone_number_var = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
-phone_entry = tk.Entry(phone_frame, textvariable=phone_number_var, font=("맑은 고딕", 11))
-phone_entry.pack(fill="x", ipady=6)
-phone_entry.bind("<FocusOut>", lambda event: save_config())
+account1_frame = tk.LabelFrame(account_wrap, text="첫번째 블로그 계정", padx=8, pady=8)
+account1_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+account2_frame = tk.LabelFrame(account_wrap, text="두번째 블로그 계정", padx=8, pady=8)
+account2_frame.pack(side="left", fill="both", expand=True, padx=(5, 0))
 
-tk.Label(right_f, text="📝 내용 편집 (단락/특수문자 교정)", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
+for parent, id_var, pw_var, url_var in (
+    (account1_frame, naver_id_var_1, naver_password_var_1, blog_write_url_var_1),
+    (account2_frame, naver_id_var_2, naver_password_var_2, blog_write_url_var_2),
+):
+    tk.Label(parent, text="네이버 아이디", font=("맑은 고딕", 9, "bold")).pack(anchor="w")
+    entry_id = tk.Entry(parent, textvariable=id_var, font=("맑은 고딕", 10))
+    entry_id.pack(fill="x", ipady=4, pady=(0, 6))
+    entry_id.bind("<FocusOut>", lambda event: save_config())
 
-editor = tk.Text(right_f, font=("맑은 고딕", 11), undo=True)
-editor.pack(fill="both", expand=True, pady=5)
+    tk.Label(parent, text="네이버 비밀번호", font=("맑은 고딕", 9, "bold")).pack(anchor="w")
+    entry_pw = tk.Entry(parent, textvariable=pw_var, font=("맑은 고딕", 10), show="*")
+    entry_pw.pack(fill="x", ipady=4, pady=(0, 6))
+    entry_pw.bind("<FocusOut>", lambda event: save_config())
+
+    tk.Label(parent, text="블로그 글쓰기 주소", font=("맑은 고딕", 9, "bold")).pack(anchor="w")
+    entry_url = tk.Entry(parent, textvariable=url_var, font=("맑은 고딕", 10))
+    entry_url.pack(fill="x", ipady=4)
+    entry_url.bind("<FocusOut>", lambda event: save_config())
+
+phone_wrap_frame = tk.Frame(right_f)
+phone_wrap_frame.pack(fill="x", pady=(0, 8))
+
+phone_left_frame = tk.LabelFrame(phone_wrap_frame, text="블로그 1 견적상담하기 전화번호", padx=8, pady=8)
+phone_left_frame.pack(side="left", fill="x", expand=True, padx=(0, 4))
+phone_right_frame = tk.LabelFrame(phone_wrap_frame, text="블로그 2 견적상담하기 전화번호", padx=8, pady=8)
+phone_right_frame.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+phone_number_var_1 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
+phone_number_var_2 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
+
+phone_entry_1 = tk.Entry(phone_left_frame, textvariable=phone_number_var_1, font=("맑은 고딕", 11))
+phone_entry_1.pack(fill="x", ipady=6)
+phone_entry_1.bind("<FocusOut>", lambda event: save_config())
+
+phone_entry_2 = tk.Entry(phone_right_frame, textvariable=phone_number_var_2, font=("맑은 고딕", 11))
+phone_entry_2.pack(fill="x", ipady=6)
+phone_entry_2.bind("<FocusOut>", lambda event: save_config())
+
+editor_wrap = tk.PanedWindow(right_f, orient=tk.HORIZONTAL, sashrelief=tk.RAISED)
+editor_wrap.pack(fill="both", expand=True, pady=5)
+
+blog1_editor_frame = tk.LabelFrame(editor_wrap, text="첫번째 블로그 글", padx=8, pady=8)
+blog2_editor_frame = tk.LabelFrame(editor_wrap, text="두번째 블로그 글", padx=8, pady=8)
+editor_wrap.add(blog1_editor_frame, stretch="always")
+editor_wrap.add(blog2_editor_frame, stretch="always")
+
+# 첫번째 블로그 입력창
+
+tk.Label(blog1_editor_frame, text="📰 첫번째 제목", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
+title_var_1 = tk.StringVar()
+title_entry_1 = tk.Entry(blog1_editor_frame, textvariable=title_var_1, font=("맑은 고딕", 11))
+title_entry_1.pack(fill="x", pady=(0, 8), ipady=6)
+
+tk.Label(blog1_editor_frame, text="📝 첫번째 내용", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
+editor_1 = tk.Text(blog1_editor_frame, font=("맑은 고딕", 11), undo=True)
+editor_1.pack(fill="both", expand=True)
+
+# 두번째 블로그 입력창
+
+tk.Label(blog2_editor_frame, text="📰 두번째 제목", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
+title_var_2 = tk.StringVar()
+title_entry_2 = tk.Entry(blog2_editor_frame, textvariable=title_var_2, font=("맑은 고딕", 11))
+title_entry_2.pack(fill="x", pady=(0, 8), ipady=6)
+
+tk.Label(blog2_editor_frame, text="📝 두번째 내용", font=("맑은 고딕", 10, "bold")).pack(anchor="w")
+editor_2 = tk.Text(blog2_editor_frame, font=("맑은 고딕", 11), undo=True)
+editor_2.pack(fill="both", expand=True)
 
 speed_frame = tk.LabelFrame(right_f, text="⚡ 타이핑 속도 설정 (CPM)")
 speed_frame.pack(fill="x", pady=5)
 
-speed_scale = tk.Scale(speed_frame, from_=100, to_=1200, orient=tk.HORIZONTAL)
-speed_scale.set(450)
+speed_value_var = tk.StringVar(value=f"현재 타수: {DEFAULT_SPEED_CPM} CPM")
+tk.Label(speed_frame, textvariable=speed_value_var, font=("맑은 고딕", 10, "bold"), fg="#0d6efd").pack(anchor="w", padx=10, pady=(6, 0))
+
+speed_scale = tk.Scale(
+    speed_frame,
+    from_=100,
+    to_=1200,
+    orient=tk.HORIZONTAL,
+    resolution=10,
+    showvalue=False,
+    command=update_speed_label,
+)
+speed_scale.set(DEFAULT_SPEED_CPM)
 speed_scale.pack(fill="x", padx=10)
+update_speed_label()
+speed_scale.bind("<ButtonRelease-1>", lambda event: save_config())
 
 tk.Button(
     right_f,
-    text="💾 현재 내용 저장",
+    text="💾 첫번째 제목/내용 + 두번째 제목/내용 저장",
     command=save_txt_file,
     bg="#007bff",
     fg="white",
@@ -1214,7 +1620,7 @@ status_var = tk.StringVar(value="대기 중")
 tk.Label(right_f, textvariable=status_var, fg="#28a745", font=("맑은 고딕", 13, "bold")).pack()
 tk.Label(
     right_f,
-    text="[F2] 사전 실행 → 제목 입력 → Enter 1번 → 내용 입력 | 견적상담하기 자동 전화링크 | [ESC] 중지",
+    text="[F2] 블로그 1 시크릿 창 실행 → 필요시 블로그 2 일반 크롬 새 창 실행 → 제목 입력 → Enter 1번 → 내용 입력 | 견적상담하기 자동 전화링크 | [ESC] 중지",
     fg="#dc3545",
     font=("맑은 고딕", 10, "bold")
 ).pack()
