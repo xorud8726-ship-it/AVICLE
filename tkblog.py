@@ -740,32 +740,34 @@ def get_chrome_windows():
     return windows
 
 
-def activate_specific_chrome_window(window) -> bool:
+def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bool:
     if window is None:
         return False
     try:
         if window.isMinimized:
             window.restore()
             time.sleep(0.15)
+        if adjust_geometry:
+            force_chrome_window_geometry(window)
+            time.sleep(0.1)
         window.activate()
         time.sleep(0.2)
-        force_chrome_window_geometry(window)
         return True
     except Exception:
         return False
 
 
-def activate_chrome_window() -> bool:
+def activate_chrome_window(adjust_geometry: bool = False) -> bool:
     global preferred_chrome_hwnd
 
     if preferred_chrome_hwnd is not None:
         for w in get_chrome_windows():
             if getattr(w, "_hWnd", None) == preferred_chrome_hwnd:
-                if activate_specific_chrome_window(w):
+                if activate_specific_chrome_window(w, adjust_geometry=adjust_geometry):
                     return True
 
     for w in get_chrome_windows():
-        if activate_specific_chrome_window(w):
+        if activate_specific_chrome_window(w, adjust_geometry=adjust_geometry):
             return True
     return False
 
@@ -856,19 +858,36 @@ def click_image_limited(template_path: str, attempts: int = 2, confidence: float
 
 def scroll_horizontal_to_right() -> None:
     activate_chrome_window()
-    pyautogui.click(WIN_X + WIN_W // 2, WIN_Y + 110)
-    time.sleep(0.03)
+
+    try:
+        original_x, original_y = pyautogui.position()
+    except Exception:
+        original_x, original_y = None, None
+
+    target_x = WIN_X + WIN_W // 2
+    target_y = WIN_Y + 260
+
+    pyautogui.moveTo(target_x, target_y, duration=0.15)
+    pyautogui.click(target_x, target_y)
+    time.sleep(0.1)
 
     pyautogui.keyDown("shift")
     try:
-        for _ in range(60):
+        for _ in range(80):
             if stop_flag:
                 break
             pyautogui.scroll(-120)
+            time.sleep(0.01)
     finally:
         pyautogui.keyUp("shift")
 
     time.sleep(0.1)
+
+    if original_x is not None and original_y is not None:
+        try:
+            pyautogui.moveTo(original_x, original_y, duration=0.1)
+        except Exception:
+            pass
 
 
 def click_login_template() -> bool:
@@ -1048,6 +1067,7 @@ def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: st
     preferred_chrome_hwnd = getattr(target_window, "_hWnd", None)
 
     set_status(f"{blog_label} 사전 작업: 크롬 창 활성화 중...")
+    force_chrome_window_geometry(target_window)
     if not activate_specific_chrome_window(target_window):
         activate_chrome_window()
 
@@ -1333,6 +1353,16 @@ def refresh_prompt_buttons():
         prompt_copy_buttons[i].config(text=prompt_button_names[i])
         prompt_edit_buttons[i].config(text=f"프롬프트 {i + 1} 내용 수정")
         prompt_name_buttons[i].config(text=f"프롬프트 {i + 1} 버튼 이름 수정")
+
+
+
+def load_image_with_exif_fix(path: str):
+    img = Image.open(path)
+    try:
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+    return img
 
 
 # ---------------- [탭 3] 이미지 일괄 변환 및 이름 변경 ----------------
