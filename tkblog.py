@@ -706,7 +706,7 @@ def run_quote_block_action(quote_text: str) -> None:
     time.sleep(0.2)
     paste_text_safely(quote_text)
     time.sleep(0.2)
-    pyautogui.press("down")
+    pyautogui.press("down", presses=2)
     time.sleep(0.2)
 
 
