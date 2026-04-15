@@ -161,6 +161,10 @@ EMDFHR_TEMPLATE = os.path.join(BASE_DIR, "emdfhr.png")
 CNLTH_TEMPLATE = os.path.join(BASE_DIR, "cnlth.png")
 RINK_TEMPLATE = os.path.join(BASE_DIR, "rink.png")
 URL_TEMPLATE = os.path.join(BASE_DIR, "url.png")
+MAP_TEMPLATE = os.path.join(BASE_DIR, "map.png")
+AVICLE_TEMPLATE = os.path.join(BASE_DIR, "avicle.png")
+ADD_TEMPLATE = os.path.join(BASE_DIR, "add.png")
+CHECK_TEMPLATE = os.path.join(BASE_DIR, "check.png")
 
 WIN_X, WIN_Y = 0, 0
 WIN_W, WIN_H = 837, 1037
@@ -632,6 +636,35 @@ def select_recent_typed_text(char_count: int) -> None:
     time.sleep(0.2)
 
 
+def run_post_estimate_location_action() -> None:
+    set_status("견적상담하기 후 지도/주소 작업 중...")
+
+    pyautogui.press("enter", presses=2, interval=0.15)
+    time.sleep(0.3)
+
+    if not click_image_forever(MAP_TEMPLATE, confidence=0.85):
+        raise RuntimeError("map.png 이미지를 찾지 못했습니다.")
+
+    time.sleep(0.2)
+    paste_text_safely("자동차로 53")
+    time.sleep(0.15)
+    pyautogui.press("enter")
+    time.sleep(0.4)
+
+    if not click_image_forever(AVICLE_TEMPLATE, confidence=0.85):
+        raise RuntimeError("avicle.png 이미지를 찾지 못했습니다.")
+
+    if not click_image_forever(ADD_TEMPLATE, confidence=0.85):
+        raise RuntimeError("add.png 이미지를 찾지 못했습니다.")
+
+    if not click_image_forever(CHECK_TEMPLATE, confidence=0.85):
+        raise RuntimeError("check.png 이미지를 찾지 못했습니다.")
+
+    time.sleep(0.2)
+    pyautogui.press("enter", presses=2, interval=0.15)
+    time.sleep(0.3)
+
+
 def run_estimate_link_action(blog_index: int = 1) -> None:
     set_status("견적상담하기 링크 작업 중...")
 
@@ -651,6 +684,8 @@ def run_estimate_link_action(blog_index: int = 1) -> None:
     time.sleep(0.15)
     pyautogui.press("right")
     time.sleep(0.2)
+
+    run_post_estimate_location_action()
 
 
 def human_like_typing(text: str, blog_index: int = 1):
@@ -864,12 +899,17 @@ def scroll_horizontal_to_right() -> None:
     except Exception:
         original_x, original_y = None, None
 
-    target_x = WIN_X + WIN_W // 2
-    target_y = WIN_Y + 260
+    # 브라우저 내부 버튼 오클릭 방지:
+    # 클릭은 하지 않고, 본문 안쪽의 비교적 안전한 좌표로 마우스만 이동한 뒤
+    # Shift+휠 스크롤만 수행합니다.
+    target_x = WIN_X + max(120, WIN_W - 220)
+    target_y = WIN_Y + max(180, min(320, WIN_H // 3))
 
-    pyautogui.moveTo(target_x, target_y, duration=0.15)
-    pyautogui.click(target_x, target_y)
-    time.sleep(0.1)
+    try:
+        pyautogui.moveTo(target_x, target_y, duration=0.12)
+        time.sleep(0.08)
+    except Exception:
+        pass
 
     pyautogui.keyDown("shift")
     try:
@@ -881,11 +921,11 @@ def scroll_horizontal_to_right() -> None:
     finally:
         pyautogui.keyUp("shift")
 
-    time.sleep(0.1)
+    time.sleep(0.08)
 
     if original_x is not None and original_y is not None:
         try:
-            pyautogui.moveTo(original_x, original_y, duration=0.1)
+            pyautogui.moveTo(original_x, original_y, duration=0.08)
         except Exception:
             pass
 
