@@ -899,33 +899,28 @@ def scroll_horizontal_to_right() -> None:
     except Exception:
         original_x, original_y = None, None
 
-    # 브라우저 내부 버튼 오클릭 방지:
-    # 클릭은 하지 않고, 본문 안쪽의 비교적 안전한 좌표로 마우스만 이동한 뒤
-    # Shift+휠 스크롤만 수행합니다.
+    # v3 동작은 유지하되, 이미 끝까지 스크롤된 뒤에도 오래 기다리는 문제를 줄이기 위해
+    # 짧고 강한 횟수로만 빠르게 오른쪽 끝까지 보냅니다.
     target_x = WIN_X + max(120, WIN_W - 220)
     target_y = WIN_Y + max(180, min(320, WIN_H // 3))
 
     try:
-        pyautogui.moveTo(target_x, target_y, duration=0.12)
-        time.sleep(0.08)
+        pyautogui.moveTo(target_x, target_y, duration=0.03)
     except Exception:
         pass
 
     pyautogui.keyDown("shift")
     try:
-        for _ in range(80):
+        for _ in range(18):
             if stop_flag:
                 break
-            pyautogui.scroll(-120)
-            time.sleep(0.01)
+            pyautogui.scroll(-800)
     finally:
         pyautogui.keyUp("shift")
 
-    time.sleep(0.08)
-
     if original_x is not None and original_y is not None:
         try:
-            pyautogui.moveTo(original_x, original_y, duration=0.08)
+            pyautogui.moveTo(original_x, original_y, duration=0.03)
         except Exception:
             pass
 
