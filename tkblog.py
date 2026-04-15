@@ -183,6 +183,8 @@ SEARCH_INTERVAL = 0.25
 DEFAULT_PHONE_NUMBER = "010-8075-8066"
 DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
+QUOTE_MARKER = "-인용구-"
+QUOTE_TEMPLATE = os.path.join(BASE_DIR, "66.PNG")
 
 
 kb_controller = Controller()
@@ -688,6 +690,26 @@ def run_estimate_link_action(blog_index: int = 1) -> None:
     run_post_estimate_location_action()
 
 
+def extract_quote_text(block_text: str) -> str:
+    value = block_text.strip()
+    if value.startswith('"') and value.endswith('"') and len(value) >= 2:
+        value = value[1:-1].strip()
+    return value
+
+
+def run_quote_block_action(quote_text: str) -> None:
+    set_status("인용구 입력 작업 중...")
+
+    if not click_image_forever(QUOTE_TEMPLATE, confidence=0.85):
+        raise RuntimeError("66.PNG 이미지를 찾지 못했습니다.")
+
+    time.sleep(0.2)
+    paste_text_safely(quote_text)
+    time.sleep(0.2)
+    pyautogui.press("down")
+    time.sleep(0.2)
+
+
 def human_like_typing(text: str, blog_index: int = 1):
     global stop_flag
 
@@ -715,6 +737,21 @@ def human_like_typing(text: str, blog_index: int = 1):
             run_estimate_link_action(blog_index)
             index += len(SPECIAL_LINK_TEXT)
             continue
+
+        if text.startswith(QUOTE_MARKER, index):
+            quote_start = index + len(QUOTE_MARKER)
+            quote_end = text.find(QUOTE_MARKER, quote_start)
+
+            if quote_end != -1:
+                quote_raw = text[quote_start:quote_end]
+                quote_text = extract_quote_text(quote_raw)
+
+                if quote_text:
+                    run_quote_block_action(quote_text)
+                    index = quote_end + len(QUOTE_MARKER)
+                    while index < text_length and text[index] in "\r\n":
+                        index += 1
+                    continue
 
         char = text[index]
 
