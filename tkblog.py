@@ -759,9 +759,8 @@ def human_like_typing(text: str, blog_index: int = 1):
             if stop_flag:
                 break
                 
-            # 커서를 전부 씌우기 (현재 라인 맨 앞까지 블록 선택)
-            pyautogui.hotkey("shift", "home")
-            time.sleep(0.3)
+            # 커서를 전부 씌우기 (기존에 정의된 안전한 글자수 만큼 좌측 이동 함수 활용)
+            select_recent_typed_text(len(rest_of_line))
             
             # pont.png 클릭
             set_status("소제목 서식 적용 중 (pont.png)...")
