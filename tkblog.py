@@ -184,8 +184,11 @@ DEFAULT_PHONE_NUMBER = "010-8075-8066"
 DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
 QUOTE_MARKER = "-인용구-"
-QUOTE_TEMPLATE = os.path.join(BASE_DIR, "66.PNG")
+SUBHEADING_MARKER = "[소제목]"
 
+QUOTE_TEMPLATE = os.path.join(BASE_DIR, "66.PNG")
+PONT_TEMPLATE = os.path.join(BASE_DIR, "pont.png")
+SIZE19_TEMPLATE = os.path.join(BASE_DIR, "19.png")
 
 kb_controller = Controller()
 
@@ -727,6 +730,56 @@ def human_like_typing(text: str, blog_index: int = 1):
     while index < text_length:
         if stop_flag:
             break
+
+        # ------------------ [소제목] 처리 구간 ------------------
+        if text.startswith(SUBHEADING_MARKER, index):
+            # "[소제목]" 문자열은 건너뜀
+            index += len(SUBHEADING_MARKER)
+            
+            # 현재 줄의 끝(\n) 위치 찾기
+            line_end = text.find("\n", index)
+            if line_end == -1:
+                line_end = text_length
+            
+            # 해당 줄의 나머지 텍스트 추출
+            rest_of_line = text[index:line_end]
+            
+            # 나머지 텍스트 모두 타이핑
+            for char in rest_of_line:
+                if stop_flag:
+                    break
+                if char == " ":
+                    pyautogui.press("space")
+                    time.sleep(delay * 0.5)
+                    continue
+                pyperclip.copy(char)
+                pyautogui.hotkey("ctrl", "v")
+                time.sleep(delay * random.uniform(0.8, 1.2))
+            
+            if stop_flag:
+                break
+                
+            # 커서를 전부 씌우기 (현재 라인 맨 앞까지 블록 선택)
+            pyautogui.hotkey("shift", "home")
+            time.sleep(0.3)
+            
+            # pont.png 클릭
+            set_status("소제목 서식 적용 중 (pont.png)...")
+            if click_image_forever(PONT_TEMPLATE, confidence=0.85):
+                time.sleep(0.3)
+                # 19.png 클릭
+                set_status("소제목 폰트 크기 변경 중 (19.png)...")
+                click_image_forever(SIZE19_TEMPLATE, confidence=0.85)
+            
+            # end 버튼 눌러 커서 풀기
+            time.sleep(0.2)
+            pyautogui.press("end")
+            time.sleep(0.2)
+            
+            # 다음 라인으로 index 점프
+            index = line_end
+            continue
+        # --------------------------------------------------------
 
         if text.startswith(SPECIAL_LINK_TEXT, index):
             for special_char in SPECIAL_LINK_TEXT:
@@ -1788,7 +1841,7 @@ for i in range(4):
 
 # --- 탭3: 이미지 변환 도구 ---
 tab3 = tk.Frame(notebook)
-notebook.add(tab3, text="이미지 일괄 변환 및 이름 변경")
+notebook.add(tab3, text="이미 일괄 변환 및 이름 변경")
 
 img_folder_path = tk.StringVar()
 img_keywords = tk.StringVar()
