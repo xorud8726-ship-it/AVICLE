@@ -169,6 +169,14 @@ CHECK_TEMPLATE = os.path.join(BASE_DIR, "check.png")
 WIN_X, WIN_Y = 0, 0
 WIN_W, WIN_H = 837, 1037
 
+# 네이버 글쓰기 화면 좌표 보정값
+# se.png 인식이 실패하거나 두 번째 블로그에서 포커스가 꼬일 때 사용하는 안전 클릭 좌표입니다.
+# 크롬 창을 837x1037 / 좌상단 0,0 으로 고정하는 현재 코드 기준입니다.
+TITLE_CLICK_X = WIN_X + WIN_W // 2
+TITLE_CLICK_Y = WIN_Y + 285
+BODY_CLICK_X = WIN_X + WIN_W // 2
+BODY_CLICK_Y = WIN_Y + 420
+
 DEFAULT_NAVER_ID_1 = ""
 DEFAULT_NAVER_PASSWORD_1 = ""
 DEFAULT_BLOG_WRITE_URL_1 = ""
@@ -1054,26 +1062,63 @@ def dismiss_help_popup_or_arrow_up() -> None:
         time.sleep(0.1)
 
 
-def center_align_twice_with_down_then_up() -> None:
+def click_title_area_by_coordinate() -> None:
+    """이미지 인식이 실패했을 때 제목 입력칸을 좌표로 클릭합니다."""
+    activate_chrome_window()
+    time.sleep(0.15)
+    pyautogui.click(TITLE_CLICK_X, TITLE_CLICK_Y)
     time.sleep(0.25)
+
+
+def click_body_area_by_coordinate() -> None:
+    """본문 입력칸을 좌표로 클릭합니다."""
+    activate_chrome_window()
+    time.sleep(0.15)
+    pyautogui.click(BODY_CLICK_X, BODY_CLICK_Y)
+    time.sleep(0.25)
+
+
+def center_align_title_and_body() -> None:
+    """
+    제목과 본문을 모두 가운데 정렬로 맞춘 뒤 다시 제목칸으로 돌아옵니다.
+    기존 down/up 방식은 두 번째 블로그에서 포커스가 꼬이면 다음 동작이 멈출 수 있어
+    제목 클릭 -> 제목 가운데 정렬 -> 본문 클릭 -> 본문 가운데 정렬 -> 제목 재클릭 방식으로 변경했습니다.
+    """
+    time.sleep(0.25)
+
     pyautogui.hotkey("ctrl", "alt", "c")
-    time.sleep(0.12)
+    time.sleep(0.2)
 
-    pyautogui.press("down")
-    time.sleep(0.12)
-
+    click_body_area_by_coordinate()
     pyautogui.hotkey("ctrl", "alt", "c")
-    time.sleep(0.12)
+    time.sleep(0.2)
 
-    pyautogui.press("up")
+    click_title_area_by_coordinate()
     time.sleep(0.2)
 
 
-def run_se_action() -> bool:
-    ok = click_image_forever(SE_TEMPLATE, confidence=0.85)
+def run_se_action(blog_label: str = "") -> bool:
+    """
+    제목 입력칸을 준비합니다.
+    se.png를 무한정 기다리지 않고, 못 찾으면 좌표 클릭으로 넘어가게 해서
+    두 번째 블로그에서 멈추는 문제를 방지합니다.
+    """
+    if blog_label:
+        set_status(f"{blog_label} 제목칸 찾는 중...")
+
+    ok = click_image_limited(
+        SE_TEMPLATE,
+        attempts=8,
+        confidence=0.80,
+        delay_sec=0.45,
+    )
+
     if not ok:
-        return False
-    center_align_twice_with_down_then_up()
+        if blog_label:
+            set_status(f"{blog_label} se.png 인식 실패, 좌표로 제목칸 클릭")
+        click_title_area_by_coordinate()
+
+    center_align_title_and_body()
     return True
 
 
@@ -1184,8 +1229,8 @@ def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: st
     if stop_flag:
         return
 
-    set_status(f"{blog_label} 사전 작업: se 동작 실행 중...")
-    if not run_se_action():
+    set_status(f"{blog_label} 사전 작업: 제목칸 / 가운데 정렬 준비 중...")
+    if not run_se_action(blog_label):
         return
 
     set_status(f"{blog_label} 사전 작업 완료")
@@ -1197,6 +1242,9 @@ def move_to_body_after_title(blog_label: str) -> None:
         time.sleep(1.8)
     else:
         time.sleep(1.2)
+
+    # 엔터 후 포커스가 본문으로 안 내려가는 경우가 있어 본문 위치를 한 번 더 클릭합니다.
+    click_body_area_by_coordinate()
 
 
 def run_blog_typing_workflow(blog_label: str, blog_index: int, naver_id: str, naver_password: str, blog_write_url: str, title: str, content: str, use_incognito: bool = True) -> None:
