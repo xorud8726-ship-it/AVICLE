@@ -148,23 +148,146 @@ def get_base_dir():
 
 BASE_DIR = get_base_dir()
 
+POSTS_DIR_NAME = "posts"
+CONFIG_DIR_NAME = "config"
+ASSETS_DIR_NAME = "assets"
+OUTPUT_DIR_NAME = "output"
+DATA_DIR_NAME = "data"
+
+MIGRATION_MARKER = ".folders_migrated"
+
+ASSET_FILENAMES = (
+    "naver_login.png",
+    "help_header.png",
+    "se.png",
+    "emdfhr.png",
+    "cnlth.png",
+    "rink.png",
+    "url.png",
+    "map.png",
+    "avicle.png",
+    "add.png",
+    "check.png",
+    "66.PNG",
+)
+
+
+def get_posts_dir():
+    return os.path.join(BASE_DIR, POSTS_DIR_NAME)
+
+
+def get_config_dir():
+    return os.path.join(BASE_DIR, CONFIG_DIR_NAME)
+
+
+def get_assets_dir():
+    return os.path.join(BASE_DIR, ASSETS_DIR_NAME)
+
+
+def get_output_dir():
+    return os.path.join(BASE_DIR, OUTPUT_DIR_NAME)
+
+
+def get_data_dir():
+    return os.path.join(BASE_DIR, DATA_DIR_NAME)
+
+
+def ensure_app_directories():
+    for folder_name in (
+        POSTS_DIR_NAME,
+        CONFIG_DIR_NAME,
+        ASSETS_DIR_NAME,
+        OUTPUT_DIR_NAME,
+        DATA_DIR_NAME,
+    ):
+        os.makedirs(os.path.join(BASE_DIR, folder_name), exist_ok=True)
+
+
+def _safe_move_file(source_path: str, target_dir: str) -> None:
+    if not os.path.isfile(source_path):
+        return
+
+    file_name = os.path.basename(source_path)
+    target_path = os.path.join(target_dir, file_name)
+
+    if os.path.abspath(source_path) == os.path.abspath(target_path):
+        return
+
+    if os.path.exists(target_path):
+        return
+
+    os.makedirs(target_dir, exist_ok=True)
+    os.replace(source_path, target_path)
+
+
+def migrate_legacy_files():
+    ensure_app_directories()
+
+    marker_path = os.path.join(get_config_dir(), MIGRATION_MARKER)
+    if os.path.exists(marker_path):
+        return
+
+    posts_dir = get_posts_dir()
+    config_dir = get_config_dir()
+    assets_dir = get_assets_dir()
+    output_dir = get_output_dir()
+
+    reserved_names = {
+        POSTS_DIR_NAME,
+        CONFIG_DIR_NAME,
+        ASSETS_DIR_NAME,
+        OUTPUT_DIR_NAME,
+        DATA_DIR_NAME,
+        "원본.py",
+    }
+
+    try:
+        for entry in os.listdir(BASE_DIR):
+            source_path = os.path.join(BASE_DIR, entry)
+
+            if not os.path.isfile(source_path):
+                continue
+
+            lower_name = entry.lower()
+
+            if entry in reserved_names:
+                continue
+
+            if lower_name.endswith(".txt"):
+                _safe_move_file(source_path, posts_dir)
+            elif lower_name == CONFIG_FILE.lower() or lower_name == "secret.key":
+                _safe_move_file(source_path, config_dir)
+            elif lower_name.endswith(".md"):
+                _safe_move_file(source_path, output_dir)
+            elif lower_name.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
+                _safe_move_file(source_path, assets_dir)
+
+        for asset_name in ASSET_FILENAMES:
+            _safe_move_file(os.path.join(BASE_DIR, asset_name), assets_dir)
+
+        with open(marker_path, "w", encoding="utf-8") as marker_file:
+            marker_file.write("ok")
+    except Exception as exc:
+        print("legacy migration warning:", exc)
+
+
 CHROME_CANDIDATES = (
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
     os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
 )
 
-LOGIN_TEMPLATE = os.path.join(BASE_DIR, "naver_login.png")
-HELP_HEADER_TEMPLATE = os.path.join(BASE_DIR, "help_header.png")
-SE_TEMPLATE = os.path.join(BASE_DIR, "se.png")
-EMDFHR_TEMPLATE = os.path.join(BASE_DIR, "emdfhr.png")
-CNLTH_TEMPLATE = os.path.join(BASE_DIR, "cnlth.png")
-RINK_TEMPLATE = os.path.join(BASE_DIR, "rink.png")
-URL_TEMPLATE = os.path.join(BASE_DIR, "url.png")
-MAP_TEMPLATE = os.path.join(BASE_DIR, "map.png")
-AVICLE_TEMPLATE = os.path.join(BASE_DIR, "avicle.png")
-ADD_TEMPLATE = os.path.join(BASE_DIR, "add.png")
-CHECK_TEMPLATE = os.path.join(BASE_DIR, "check.png")
+LOGIN_TEMPLATE = os.path.join(get_assets_dir(), "naver_login.png")
+HELP_HEADER_TEMPLATE = os.path.join(get_assets_dir(), "help_header.png")
+SE_TEMPLATE = os.path.join(get_assets_dir(), "se.png")
+EMDFHR_TEMPLATE = os.path.join(get_assets_dir(), "emdfhr.png")
+CNLTH_TEMPLATE = os.path.join(get_assets_dir(), "cnlth.png")
+RINK_TEMPLATE = os.path.join(get_assets_dir(), "rink.png")
+URL_TEMPLATE = os.path.join(get_assets_dir(), "url.png")
+MAP_TEMPLATE = os.path.join(get_assets_dir(), "map.png")
+AVICLE_TEMPLATE = os.path.join(get_assets_dir(), "avicle.png")
+ADD_TEMPLATE = os.path.join(get_assets_dir(), "add.png")
+CHECK_TEMPLATE = os.path.join(get_assets_dir(), "check.png")
 
 WIN_X, WIN_Y = 0, 0
 WIN_W, WIN_H = 837, 1037
@@ -192,7 +315,7 @@ DEFAULT_PHONE_NUMBER = "010-8075-8066"
 DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
 QUOTE_MARKER = "-인용구-"
-QUOTE_TEMPLATE = os.path.join(BASE_DIR, "66.PNG")
+QUOTE_TEMPLATE = os.path.join(get_assets_dir(), "66.PNG")
 
 
 kb_controller = Controller()
@@ -297,7 +420,7 @@ def save_config():
         "speed_cpm": int(speed_scale.get()),
     }
     try:
-        config_path = os.path.join(BASE_DIR, CONFIG_FILE)
+        config_path = os.path.join(get_config_dir(), CONFIG_FILE)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception:
@@ -307,8 +430,12 @@ def save_config():
 def load_config():
     global prompt_templates, prompt_button_names
 
-    config_path = os.path.join(BASE_DIR, CONFIG_FILE)
-    if not os.path.exists(config_path):
+    config_candidates = [
+        os.path.join(get_config_dir(), CONFIG_FILE),
+        os.path.join(BASE_DIR, CONFIG_FILE),
+    ]
+    config_path = next((path for path in config_candidates if os.path.exists(path)), None)
+    if not config_path:
         return
 
     try:
@@ -371,7 +498,7 @@ def set_status(text: str):
 
 # ---------------- [탭 1] 파일 관리 및 자동 타이핑 ----------------
 def get_txt_folder():
-    return BASE_DIR
+    return get_posts_dir()
 
 
 def split_blog_file_content(raw_text: str):
@@ -1850,6 +1977,8 @@ img_folder_path = tk.StringVar()
 img_keywords = tk.StringVar()
 img_status_var = tk.StringVar()
 
+ensure_app_directories()
+migrate_legacy_files()
 load_config()
 
 tk.Label(tab3, text="작업할 폴더 선택", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(30, 10))
