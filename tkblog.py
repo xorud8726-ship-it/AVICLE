@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import shutil
 import time
 import random
 import threading
@@ -142,8 +143,22 @@ prompt_name_buttons = []
 # ---------------- 리소스 경로 ----------------
 def get_base_dir():
     if getattr(sys, "frozen", False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
+        return os.path.dirname(os.path.abspath(sys.executable))
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(script_dir)
+
+    # 원본.py 폴더에서 실행해도 launcher.exe 가 있는 실제 작업 폴더를 사용
+    if os.path.basename(script_dir).lower() in ("원본.py", "src", "source"):
+        if (
+            os.path.isfile(os.path.join(parent_dir, "launcher.exe"))
+            or os.path.isdir(os.path.join(parent_dir, "posts"))
+            or os.path.isfile(os.path.join(parent_dir, "config.json"))
+            or os.path.isdir(os.path.join(parent_dir, "config"))
+        ):
+            return parent_dir
+
+    return script_dir
 
 
 BASE_DIR = get_base_dir()
@@ -220,12 +235,96 @@ def _safe_move_file(source_path: str, target_dir: str) -> None:
     os.replace(source_path, target_path)
 
 
+def resolve_asset_path(file_name: str) -> str:
+    name_candidates = [file_name]
+    if file_name.lower().endswith(".png"):
+        stem = file_name[:-4]
+        name_candidates.append(stem + ".png")
+        name_candidates.append(stem + ".PNG")
+
+    path_candidates = []
+    for name in name_candidates:
+        path_candidates.append(os.path.join(get_assets_dir(), name))
+        path_candidates.append(os.path.join(BASE_DIR, name))
+
+    for path in path_candidates:
+        if os.path.isfile(path):
+            return path
+    return path_candidates[0]
+
+
+def iter_txt_folders():
+    folders = []
+    posts_dir = get_posts_dir()
+    if os.path.isdir(posts_dir):
+        folders.append(posts_dir)
+    if os.path.abspath(BASE_DIR) not in {os.path.abspath(folder) for folder in folders}:
+        folders.append(BASE_DIR)
+    return folders
+
+
+def resolve_txt_path(file_name: str) -> str:
+    for folder in iter_txt_folders():
+        path = os.path.join(folder, file_name)
+        if os.path.isfile(path):
+            return path
+    return os.path.join(get_posts_dir(), file_name)
+
+
+def resolve_config_path(for_write: bool = False) -> str:
+    if for_write:
+        return os.path.join(get_config_dir(), CONFIG_FILE)
+
+    candidates = (
+        os.path.join(get_config_dir(), CONFIG_FILE),
+        os.path.join(BASE_DIR, CONFIG_FILE),
+    )
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return candidates[0]
+
+
+def bind_template_paths():
+    global LOGIN_TEMPLATE, HELP_HEADER_TEMPLATE, SE_TEMPLATE
+    global EMDFHR_TEMPLATE, CNLTH_TEMPLATE, RINK_TEMPLATE, URL_TEMPLATE
+    global MAP_TEMPLATE, AVICLE_TEMPLATE, ADD_TEMPLATE, CHECK_TEMPLATE, QUOTE_TEMPLATE
+
+    LOGIN_TEMPLATE = resolve_asset_path("naver_login.png")
+    HELP_HEADER_TEMPLATE = resolve_asset_path("help_header.png")
+    SE_TEMPLATE = resolve_asset_path("se.png")
+    EMDFHR_TEMPLATE = resolve_asset_path("emdfhr.png")
+    CNLTH_TEMPLATE = resolve_asset_path("cnlth.png")
+    RINK_TEMPLATE = resolve_asset_path("rink.png")
+    URL_TEMPLATE = resolve_asset_path("url.png")
+    MAP_TEMPLATE = resolve_asset_path("map.png")
+    AVICLE_TEMPLATE = resolve_asset_path("avicle.png")
+    ADD_TEMPLATE = resolve_asset_path("add.png")
+    CHECK_TEMPLATE = resolve_asset_path("check.png")
+    QUOTE_TEMPLATE = resolve_asset_path("66.PNG")
+
+
+def ensure_launcher_secrets():
+    """런처가 exe 옆 secret.key 를 찾는 경우를 위해 루트에도 유지합니다."""
+    root_key = os.path.join(BASE_DIR, "secret.key")
+    config_key = os.path.join(get_config_dir(), "secret.key")
+
+    if os.path.isfile(config_key) and not os.path.isfile(root_key):
+        try:
+            shutil.copy2(config_key, root_key)
+        except Exception:
+            pass
+
+
+def init_app_storage():
+    ensure_app_directories()
+    migrate_legacy_files()
+    ensure_launcher_secrets()
+    bind_template_paths()
+
+
 def migrate_legacy_files():
     ensure_app_directories()
-
-    marker_path = os.path.join(get_config_dir(), MIGRATION_MARKER)
-    if os.path.exists(marker_path):
-        return
 
     posts_dir = get_posts_dir()
     config_dir = get_config_dir()
@@ -255,8 +354,11 @@ def migrate_legacy_files():
 
             if lower_name.endswith(".txt"):
                 _safe_move_file(source_path, posts_dir)
-            elif lower_name == CONFIG_FILE.lower() or lower_name == "secret.key":
+            elif lower_name == CONFIG_FILE.lower():
                 _safe_move_file(source_path, config_dir)
+            elif lower_name == "secret.key":
+                _safe_move_file(source_path, config_dir)
+                ensure_launcher_secrets()
             elif lower_name.endswith(".md"):
                 _safe_move_file(source_path, output_dir)
             elif lower_name.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
@@ -265,6 +367,7 @@ def migrate_legacy_files():
         for asset_name in ASSET_FILENAMES:
             _safe_move_file(os.path.join(BASE_DIR, asset_name), assets_dir)
 
+        marker_path = os.path.join(get_config_dir(), MIGRATION_MARKER)
         with open(marker_path, "w", encoding="utf-8") as marker_file:
             marker_file.write("ok")
     except Exception as exc:
@@ -277,17 +380,20 @@ CHROME_CANDIDATES = (
     os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
 )
 
-LOGIN_TEMPLATE = os.path.join(get_assets_dir(), "naver_login.png")
-HELP_HEADER_TEMPLATE = os.path.join(get_assets_dir(), "help_header.png")
-SE_TEMPLATE = os.path.join(get_assets_dir(), "se.png")
-EMDFHR_TEMPLATE = os.path.join(get_assets_dir(), "emdfhr.png")
-CNLTH_TEMPLATE = os.path.join(get_assets_dir(), "cnlth.png")
-RINK_TEMPLATE = os.path.join(get_assets_dir(), "rink.png")
-URL_TEMPLATE = os.path.join(get_assets_dir(), "url.png")
-MAP_TEMPLATE = os.path.join(get_assets_dir(), "map.png")
-AVICLE_TEMPLATE = os.path.join(get_assets_dir(), "avicle.png")
-ADD_TEMPLATE = os.path.join(get_assets_dir(), "add.png")
-CHECK_TEMPLATE = os.path.join(get_assets_dir(), "check.png")
+LOGIN_TEMPLATE = ""
+HELP_HEADER_TEMPLATE = ""
+SE_TEMPLATE = ""
+EMDFHR_TEMPLATE = ""
+CNLTH_TEMPLATE = ""
+RINK_TEMPLATE = ""
+URL_TEMPLATE = ""
+MAP_TEMPLATE = ""
+AVICLE_TEMPLATE = ""
+ADD_TEMPLATE = ""
+CHECK_TEMPLATE = ""
+QUOTE_TEMPLATE = ""
+
+init_app_storage()
 
 WIN_X, WIN_Y = 0, 0
 WIN_W, WIN_H = 837, 1037
@@ -315,7 +421,6 @@ DEFAULT_PHONE_NUMBER = "010-8075-8066"
 DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
 QUOTE_MARKER = "-인용구-"
-QUOTE_TEMPLATE = os.path.join(get_assets_dir(), "66.PNG")
 
 
 kb_controller = Controller()
@@ -420,7 +525,7 @@ def save_config():
         "speed_cpm": int(speed_scale.get()),
     }
     try:
-        config_path = os.path.join(get_config_dir(), CONFIG_FILE)
+        config_path = resolve_config_path(for_write=True)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception:
@@ -430,12 +535,8 @@ def save_config():
 def load_config():
     global prompt_templates, prompt_button_names
 
-    config_candidates = [
-        os.path.join(get_config_dir(), CONFIG_FILE),
-        os.path.join(BASE_DIR, CONFIG_FILE),
-    ]
-    config_path = next((path for path in config_candidates if os.path.exists(path)), None)
-    if not config_path:
+    config_path = resolve_config_path()
+    if not os.path.isfile(config_path):
         return
 
     try:
@@ -498,6 +599,7 @@ def set_status(text: str):
 
 # ---------------- [탭 1] 파일 관리 및 자동 타이핑 ----------------
 def get_txt_folder():
+    os.makedirs(get_posts_dir(), exist_ok=True)
     return get_posts_dir()
 
 
@@ -569,8 +671,16 @@ def load_txt_files(restore_selection=True):
 
     listbox.delete(0, tk.END)
 
-    txt_folder = get_txt_folder()
-    files = [f for f in os.listdir(txt_folder) if f.lower().endswith(".txt")]
+    files = []
+    seen = set()
+    for txt_folder in iter_txt_folders():
+        try:
+            for file_name in os.listdir(txt_folder):
+                if file_name.lower().endswith(".txt") and file_name not in seen:
+                    files.append(file_name)
+                    seen.add(file_name)
+        except OSError:
+            pass
     files.sort()
 
     selected_index = None
@@ -626,6 +736,13 @@ def save_txt_file():
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(save_text)
 
+        legacy_path = os.path.join(BASE_DIR, file_name)
+        if (
+            os.path.isfile(legacy_path)
+            and os.path.abspath(legacy_path) != os.path.abspath(full_path)
+        ):
+            os.remove(legacy_path)
+
         current_selected_file = file_name
         keep_listbox_selection()
         set_status(f"[{file_name}] 저장 완료")
@@ -648,7 +765,7 @@ def create_txt_file():
     full_name = f"{new_name}.txt"
     full_path = os.path.join(get_txt_folder(), full_name)
 
-    if os.path.exists(full_path):
+    if os.path.isfile(resolve_txt_path(full_name)):
         messagebox.showerror("오류", "이미 존재하는 파일명입니다.")
         return
 
@@ -689,10 +806,10 @@ def rename_txt_file():
         return
 
     new_full_name = f"{new_name}.txt"
-    old_full_path = os.path.join(get_txt_folder(), old_name)
+    old_full_path = resolve_txt_path(old_name)
     new_full_path = os.path.join(get_txt_folder(), new_full_name)
 
-    if os.path.exists(new_full_path) and new_full_name != old_name:
+    if os.path.isfile(new_full_path) and new_full_name != old_name:
         messagebox.showerror("오류", "이미 존재하는 파일명입니다.")
         return
 
@@ -719,7 +836,11 @@ def on_select_txt(event=None):
     current_selected_file = file_name
 
     try:
-        full_path = os.path.join(get_txt_folder(), file_name)
+        full_path = resolve_txt_path(file_name)
+        if not os.path.isfile(full_path):
+            messagebox.showerror("오류", f"파일을 찾을 수 없습니다:\n{file_name}")
+            return
+
         with open(full_path, "r", encoding="utf-8") as f:
             raw_text = f.read()
 
@@ -1977,8 +2098,7 @@ img_folder_path = tk.StringVar()
 img_keywords = tk.StringVar()
 img_status_var = tk.StringVar()
 
-ensure_app_directories()
-migrate_legacy_files()
+init_app_storage()
 load_config()
 
 tk.Label(tab3, text="작업할 폴더 선택", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(30, 10))
