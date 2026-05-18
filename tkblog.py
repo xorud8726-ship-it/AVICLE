@@ -508,8 +508,47 @@ def clear_current_input_field() -> None:
 
 
 # ---------------- [공통] 설정 저장/불러오기 ----------------
-def save_config():
-    data = {
+DEFAULT_WINDOW_GEOMETRY = "1500x960"
+
+
+def _read_config_file_data():
+    config_path = resolve_config_path()
+    if not os.path.isfile(config_path):
+        return {}
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def capture_window_geometry() -> Optional[str]:
+    try:
+        root.update_idletasks()
+        width = root.winfo_width()
+        height = root.winfo_height()
+        x = root.winfo_x()
+        y = root.winfo_y()
+        if width > 100 and height > 100:
+            return f"{width}x{height}+{x}+{y}"
+    except Exception:
+        pass
+    return None
+
+
+def apply_window_geometry(geometry: str) -> None:
+    if not geometry or not isinstance(geometry, str):
+        return
+    try:
+        root.geometry(geometry.strip())
+        root.update_idletasks()
+    except Exception:
+        pass
+
+
+def _build_config_data():
+    return {
         "folder_path": img_folder_path.get(),
         "prompt_templates": prompt_templates,
         "prompt_button_names": prompt_button_names,
@@ -524,12 +563,30 @@ def save_config():
         "blog_run_mode": int(blog_run_mode_var.get()),
         "speed_cpm": int(speed_scale.get()),
     }
+
+
+def save_config(save_window_geometry: bool = False):
+    existing = _read_config_file_data()
+    data = _build_config_data()
+
+    if save_window_geometry:
+        geometry = capture_window_geometry()
+        if geometry:
+            data["window_geometry"] = geometry
+    elif existing.get("window_geometry"):
+        data["window_geometry"] = existing["window_geometry"]
+
     try:
         config_path = resolve_config_path(for_write=True)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception:
         pass
+
+
+def on_root_close():
+    save_config(save_window_geometry=True)
+    root.destroy()
 
 
 def load_config():
@@ -578,6 +635,8 @@ def load_config():
         blog_run_mode_var.set(int(data.get("blog_run_mode", 1)))
         speed_scale.set(int(data.get("speed_cpm", DEFAULT_SPEED_CPM)))
         update_speed_label()
+
+        apply_window_geometry(str(data.get("window_geometry", "")).strip())
 
     except Exception:
         pass
@@ -1844,8 +1903,9 @@ def create_flat_button(parent, text, command, bg_color, hover_color, fg="white",
 
 root = tk.Tk()
 root.title("블로그 마스터 자동화 툴 (통합 버전)")
-root.geometry("1500x960")
+root.geometry(DEFAULT_WINDOW_GEOMETRY)
 root.configure(bg=BG_MAIN)
+root.protocol("WM_DELETE_WINDOW", on_root_close)
 
 # 최신 UI 스타일(ttk) 적용
 style = ttk.Style()
