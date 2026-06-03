@@ -964,7 +964,7 @@ def run_post_estimate_location_action() -> None:
 
     time.sleep(0.2)
     paste_text_safely("자동차로 53")
-    time.sleep(0.15)
+    time.sleep(0.4)
     pyautogui.press("enter")
     time.sleep(0.4)
 
