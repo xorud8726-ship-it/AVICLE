@@ -1876,6 +1876,137 @@ def run_blog_typing_workflow(
         human_like_typing(content, blog_index=blog_index)
 
 
+BLOG_RUN_PROFILES = {
+    1: {
+        "label": "블로그 1",
+        "use_incognito": True,
+        "browser_kind": "chrome",
+        "complete_message": "블로그 1 테스트 완료",
+    },
+    2: {
+        "label": "블로그 2",
+        "use_incognito": False,
+        "browser_kind": "chrome",
+        "complete_message": "블로그 2 테스트 완료",
+    },
+    3: {
+        "label": "블로그 3",
+        "use_incognito": False,
+        "browser_kind": "edge",
+        "complete_message": "블로그 3 테스트 완료",
+    },
+}
+
+
+def get_blog_account_values(blog_index: int):
+    if blog_index == 1:
+        return (
+            naver_id_var_1.get().strip(),
+            naver_password_var_1.get().strip(),
+            blog_write_url_var_1.get().strip(),
+        )
+    if blog_index == 2:
+        return (
+            naver_id_var_2.get().strip(),
+            naver_password_var_2.get().strip(),
+            blog_write_url_var_2.get().strip(),
+        )
+    if blog_index == 3:
+        return (
+            naver_id_var_3.get().strip(),
+            naver_password_var_3.get().strip(),
+            blog_write_url_var_3.get().strip(),
+        )
+    raise ValueError(f"지원하지 않는 블로그 번호: {blog_index}")
+
+
+def validate_blog_content(blog_index: int):
+    title1, content1, title2, content2, title3, content3 = get_title_and_content_values()
+    titles = {1: title1, 2: title2, 3: title3}
+    contents = {1: content1, 2: content2, 3: content3}
+    title = titles.get(blog_index, "").strip() if blog_index in titles else ""
+    content = contents.get(blog_index, "").rstrip() if blog_index in contents else ""
+    order_label = {1: "첫번째", 2: "두번째", 3: "세번째"}.get(blog_index, f"{blog_index}번째")
+
+    if not title and not content:
+        messagebox.showwarning("경고", f"{order_label} 블로그 제목 또는 내용을 입력하세요.")
+        return None, None
+    if not title:
+        messagebox.showwarning("경고", f"{order_label} 블로그 제목을 입력하세요.")
+        return None, None
+    return title, content
+
+
+def _run_automation_in_thread(workflow_callable, complete_message: str, start_message: str = "3초 후 시작 (입력창 클릭 준비)...") -> bool:
+    global running, stop_flag
+
+    if running:
+        messagebox.showwarning("알림", "이미 작업이 실행 중입니다.")
+        return False
+
+    running = True
+    stop_flag = False
+
+    def task():
+        global running
+
+        set_status(start_message)
+        time.sleep(3)
+
+        try:
+            if stop_flag:
+                set_status("작업 중지됨")
+                return
+
+            workflow_callable()
+
+            if stop_flag:
+                set_status("작업 중지됨")
+            else:
+                set_status(complete_message)
+        except Exception as e:
+            set_status("오류 발생")
+            root.after(0, lambda: messagebox.showerror("오류", f"자동 실행 중 오류 발생:\n{e}"))
+        finally:
+            running = False
+
+    threading.Thread(target=task, daemon=True).start()
+    return True
+
+
+def start_blog_test(blog_index: int):
+    profile = BLOG_RUN_PROFILES.get(blog_index)
+    if profile is None:
+        messagebox.showerror("오류", f"지원하지 않는 블로그 번호: {blog_index}")
+        return
+
+    title, content = validate_blog_content(blog_index)
+    if title is None:
+        return
+
+    naver_id, naver_password, blog_write_url = get_blog_account_values(blog_index)
+    blog_label = profile["label"]
+
+    def workflow():
+        run_blog_typing_workflow(
+            blog_label,
+            blog_index,
+            naver_id,
+            naver_password,
+            blog_write_url,
+            title,
+            content,
+            use_incognito=profile["use_incognito"],
+            browser_kind=profile["browser_kind"],
+        )
+
+    _run_automation_in_thread(
+        workflow,
+        complete_message=profile["complete_message"],
+        start_message=f"{blog_label} 테스트: 3초 후 시작...",
+    )
+
+
 def start_typing():
     global running, stop_flag
 
@@ -2432,6 +2563,16 @@ editor_wrap.add(blog2_editor_frame, weight=1)
 editor_wrap.add(blog3_editor_frame, weight=1)
 
 # 첫번째 블로그 입력창
+create_flat_button(
+    blog1_editor_frame,
+    "▶ 블로그 1 테스트 실행",
+    lambda: start_blog_test(1),
+    SUCCESS,
+    SUCCESS_HOVER,
+    font=("맑은 고딕", 10, "bold"),
+    pady=8,
+).pack(fill="x", pady=(0, 10))
+
 tk.Label(blog1_editor_frame, text="📰 첫번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_1 = tk.StringVar()
 title_entry_1 = tk.Entry(blog1_editor_frame, textvariable=title_var_1, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
@@ -2442,6 +2583,16 @@ editor_1 = tk.Text(blog1_editor_frame, font=("맑은 고딕", 11), undo=True, re
 editor_1.pack(fill="both", expand=True)
 
 # 두번째 블로그 입력창
+create_flat_button(
+    blog2_editor_frame,
+    "▶ 블로그 2 테스트 실행",
+    lambda: start_blog_test(2),
+    SUCCESS,
+    SUCCESS_HOVER,
+    font=("맑은 고딕", 10, "bold"),
+    pady=8,
+).pack(fill="x", pady=(0, 10))
+
 tk.Label(blog2_editor_frame, text="📰 두번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_2 = tk.StringVar()
 title_entry_2 = tk.Entry(blog2_editor_frame, textvariable=title_var_2, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
@@ -2452,6 +2603,16 @@ editor_2 = tk.Text(blog2_editor_frame, font=("맑은 고딕", 11), undo=True, re
 editor_2.pack(fill="both", expand=True)
 
 # 세번째 블로그 입력창
+create_flat_button(
+    blog3_editor_frame,
+    "▶ 블로그 3 테스트 실행 (Edge)",
+    lambda: start_blog_test(3),
+    SUCCESS,
+    SUCCESS_HOVER,
+    font=("맑은 고딕", 10, "bold"),
+    pady=8,
+).pack(fill="x", pady=(0, 10))
+
 tk.Label(blog3_editor_frame, text="📰 세번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_3 = tk.StringVar()
 title_entry_3 = tk.Entry(blog3_editor_frame, textvariable=title_var_3, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
