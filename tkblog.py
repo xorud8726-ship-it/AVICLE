@@ -182,6 +182,7 @@ ASSET_FILENAMES = (
     "url.png",
     "map.png",
     "avicle.png",
+    "avicle_edge.png",
     "add.png",
     "check.png",
     "66.PNG",
@@ -243,15 +244,23 @@ def resolve_asset_path(file_name: str) -> str:
         name_candidates.append(stem + ".png")
         name_candidates.append(stem + ".PNG")
 
-    path_candidates = []
+    deduped_names = []
+    seen_names = set()
     for name in name_candidates:
-        path_candidates.append(os.path.join(get_assets_dir(), name))
-        path_candidates.append(os.path.join(BASE_DIR, name))
+        key = name.lower()
+        if key in seen_names:
+            continue
+        seen_names.add(key)
+        deduped_names.append(name)
 
-    for path in path_candidates:
-        if os.path.isfile(path):
-            return path
-    return path_candidates[0]
+    search_dirs = (get_assets_dir(), BASE_DIR)
+    for asset_dir in search_dirs:
+        for name in deduped_names:
+            path = os.path.join(asset_dir, name)
+            if os.path.isfile(path):
+                return path
+
+    return os.path.join(get_assets_dir(), deduped_names[0])
 
 
 def iter_txt_folders():
@@ -289,7 +298,7 @@ def resolve_config_path(for_write: bool = False) -> str:
 def bind_template_paths():
     global LOGIN_TEMPLATE, HELP_HEADER_TEMPLATE, SE_TEMPLATE
     global EMDFHR_TEMPLATE, CNLTH_TEMPLATE, RINK_TEMPLATE, URL_TEMPLATE
-    global MAP_TEMPLATE, AVICLE_TEMPLATE, ADD_TEMPLATE, CHECK_TEMPLATE, QUOTE_TEMPLATE
+    global MAP_TEMPLATE, AVICLE_TEMPLATE, AVICLE_EDGE_TEMPLATE, ADD_TEMPLATE, CHECK_TEMPLATE, QUOTE_TEMPLATE
 
     LOGIN_TEMPLATE = resolve_asset_path("naver_login.png")
     HELP_HEADER_TEMPLATE = resolve_asset_path("help_header.png")
@@ -300,6 +309,7 @@ def bind_template_paths():
     URL_TEMPLATE = resolve_asset_path("url.png")
     MAP_TEMPLATE = resolve_asset_path("map.png")
     AVICLE_TEMPLATE = resolve_asset_path("avicle.png")
+    AVICLE_EDGE_TEMPLATE = resolve_asset_path("avicle_edge.png")
     ADD_TEMPLATE = resolve_asset_path("add.png")
     CHECK_TEMPLATE = resolve_asset_path("check.png")
     QUOTE_TEMPLATE = resolve_asset_path("66.PNG")
@@ -400,6 +410,7 @@ RINK_TEMPLATE = ""
 URL_TEMPLATE = ""
 MAP_TEMPLATE = ""
 AVICLE_TEMPLATE = ""
+AVICLE_EDGE_TEMPLATE = ""
 ADD_TEMPLATE = ""
 CHECK_TEMPLATE = ""
 QUOTE_TEMPLATE = ""
@@ -1014,7 +1025,7 @@ def select_recent_typed_text(char_count: int) -> None:
     time.sleep(0.2)
 
 
-def run_post_estimate_location_action() -> None:
+def run_post_estimate_location_action(blog_index: int = 1) -> None:
     set_status("견적상담하기 후 지도/주소 작업 중...")
 
     pyautogui.press("enter", presses=2, interval=0.15)
@@ -1029,8 +1040,17 @@ def run_post_estimate_location_action() -> None:
     pyautogui.press("enter")
     time.sleep(0.4)
 
-    if not click_image_forever(AVICLE_TEMPLATE, confidence=0.85):
-        raise RuntimeError("avicle.png 이미지를 찾지 못했습니다.")
+    if blog_index == 3:
+        avicle_template = AVICLE_EDGE_TEMPLATE
+        avicle_name = "avicle_edge.png"
+        avicle_confidence = 0.80
+    else:
+        avicle_template = AVICLE_TEMPLATE
+        avicle_name = "avicle.png"
+        avicle_confidence = 0.85
+
+    if not click_image_forever(avicle_template, confidence=avicle_confidence):
+        raise RuntimeError(f"{avicle_name} 이미지를 찾지 못했습니다.")
 
     if not click_image_forever(ADD_TEMPLATE, confidence=0.85):
         raise RuntimeError("add.png 이미지를 찾지 못했습니다.")
@@ -1063,7 +1083,7 @@ def run_estimate_link_action(blog_index: int = 1) -> None:
     pyautogui.press("right")
     time.sleep(0.2)
 
-    run_post_estimate_location_action()
+    run_post_estimate_location_action(blog_index)
 
 
 def extract_quote_text(block_text: str) -> str:
