@@ -4,6 +4,7 @@ import json
 import shutil
 import time
 import random
+import itertools
 import threading
 import subprocess
 import tkinter as tk
@@ -42,6 +43,12 @@ SUPPORTED_EXTENSIONS = (
     ".bmp",
     ".heic",
     ".heif",
+)
+
+IMG_TITLE_KEYWORDS = (
+    "순정연동", "시공", "가격", "라이트", "튜닝", "kc인증", "스피커", "에이비클",
+    "시공후기", "아크릴", "전용어플", "전문점", "광주", "전주", "순천", "목포",
+    "군산", "여수", "익산", "광양",
 )
 
 running = False
@@ -587,6 +594,10 @@ def apply_window_geometry(geometry: str) -> None:
 def _build_config_data():
     return {
         "folder_path": img_folder_path.get(),
+        "folder_path_2": img_folder_path_2.get(),
+        "folder_use_1": bool(img_folder_use_1.get()),
+        "folder_use_2": bool(img_folder_use_2.get()),
+        "car_type": img_car_type.get().strip(),
         "prompt_templates": prompt_templates,
         "prompt_button_names": prompt_button_names,
         "phone_number_1": phone_number_var_1.get().strip(),
@@ -642,6 +653,12 @@ def load_config():
             data = json.load(f)
 
         img_folder_path.set(data.get("folder_path", ""))
+        img_folder_path_2.set(data.get("folder_path_2", ""))
+        img_folder_use_1.set(data.get("folder_use_1", True))
+        img_folder_use_2.set(data.get("folder_use_2", False))
+        saved_car_type = data.get("car_type", "")
+        if saved_car_type:
+            img_car_type.set(saved_car_type)
 
         legacy_prompt = data.get("prompt_template")
         if legacy_prompt:
@@ -2290,73 +2307,154 @@ def get_image_files(folder: str):
     return files
 
 
-def img_select_folder():
-    folder = filedialog.askdirectory()
-    if folder:
-        img_folder_path.set(folder)
-        save_config()
+def generate_unique_image_names(car_type: str, count: int) -> list[str]:
+    """차종과 고정 키워드를 조합해 서로 다른 파일명을 생성합니다."""
+    candidates = []
+    for combo_size in (2, 3, 1, 4):
+        for combo in itertools.combinations(IMG_TITLE_KEYWORDS, combo_size):
+            candidates.append(f"{car_type}_{'_'.join(combo)}")
 
+    unique_candidates = list(dict.fromkeys(candidates))
+    random.shuffle(unique_candidates)
 
-def start_img_process():
-    folder = img_folder_path.get().strip()
-    keyword_input = img_keywords.get().strip()
-
-    if not folder or not os.path.exists(folder):
-        messagebox.showerror("오류", "폴더를 먼저 선택해주세요.")
-        return
-
-    if not keyword_input:
-        messagebox.showerror("오류", "키워드를 입력해주세요.")
-        return
-
-    if not HEIC_AVAILABLE:
-        has_heic = any(
-            file_name.lower().endswith((".heic", ".heif"))
-            for file_name in os.listdir(folder)
+    if count > len(unique_candidates):
+        raise ValueError(
+            f"고유한 파일명을 {count}개 만들 수 없습니다. (최대 {len(unique_candidates)}개)"
         )
-        if has_heic:
-            messagebox.showerror(
-                "오류",
-                "HEIC/HEIF 파일을 처리하려면 pillow-heif 설치가 필요합니다.\n\n"
-                "설치 명령어:\n"
-                "C:\\Users\\uc808\\AppData\\Local\\Programs\\Python\\Python313\\python.exe -m pip install pillow-heif"
-            )
-            return
 
-    image_files = get_image_files(folder)
-    if not image_files:
-        messagebox.showerror("오류", "이미지 파일이 없습니다.")
+    return unique_candidates[:count]
+
+
+def img_select_folder(folder_index: int):
+    folder = filedialog.askdirectory()
+    if not folder:
         return
+    if folder_index == 1:
+        img_folder_path.set(folder)
+    else:
+        img_folder_path_2.set(folder)
+    save_config()
 
-    keywords = [k.strip() for k in keyword_input.split(",") if k.strip()]
-    if not keywords:
-        messagebox.showerror("오류", "유효한 키워드를 입력해주세요.")
-        return
 
-    base_name = "_".join(keywords)
+def _folder_has_heic(folder: str) -> bool:
+    return any(
+        file_name.lower().endswith((".heic", ".heif"))
+        for file_name in os.listdir(folder)
+    )
 
+
+def _process_folder_images(folder: str, image_files: list[str], title_names: list[str]):
+    temp_paths = []
     try:
-        total = len(image_files)
-        count = 1
-
-        for file_name in image_files:
+        for index, file_name in enumerate(image_files):
             old_path = os.path.join(folder, file_name)
-            new_filename = f"{base_name}_{count}.jpg"
-            new_path = os.path.join(folder, new_filename)
+            temp_path = os.path.join(folder, f"__tkblog_temp_{index}.jpg")
 
             with load_image_with_exif_fix(old_path) as img:
                 rgb_img = img.convert("RGB")
-                rgb_img.save(new_path, "JPEG", quality=100)
+                rgb_img.save(temp_path, "JPEG", quality=100)
 
-            if os.path.abspath(old_path) != os.path.abspath(new_path):
+            if os.path.abspath(old_path) != os.path.abspath(temp_path):
                 os.remove(old_path)
 
-            img_status_var.set(f"처리 중. ({count}/{total})")
+            temp_paths.append(temp_path)
+
+        for temp_path, title in zip(temp_paths, title_names):
+            final_path = os.path.join(folder, f"{title}.jpg")
+            if os.path.exists(final_path) and os.path.abspath(final_path) != os.path.abspath(temp_path):
+                os.remove(final_path)
+            os.rename(temp_path, final_path)
+    except Exception:
+        for temp_path in temp_paths:
+            if os.path.isfile(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+        raise
+
+
+def start_img_process():
+    car_type = img_car_type.get().strip()
+    use_folder_1 = bool(img_folder_use_1.get())
+    use_folder_2 = bool(img_folder_use_2.get())
+
+    if not use_folder_1 and not use_folder_2:
+        messagebox.showerror("오류", "최소 1개 폴더를 선택해주세요.")
+        return
+
+    if not car_type:
+        messagebox.showerror("오류", "차종을 입력해주세요.")
+        return
+
+    selected_folders = []
+    if use_folder_1:
+        folder_1 = img_folder_path.get().strip()
+        if not folder_1 or not os.path.isdir(folder_1):
+            messagebox.showerror("오류", "폴더 1을 먼저 선택해주세요.")
+            return
+        selected_folders.append(("폴더 1", folder_1))
+
+    if use_folder_2:
+        folder_2 = img_folder_path_2.get().strip()
+        if not folder_2 or not os.path.isdir(folder_2):
+            messagebox.showerror("오류", "폴더 2를 먼저 선택해주세요.")
+            return
+        if use_folder_1 and os.path.normcase(folder_2) == os.path.normcase(selected_folders[0][1]):
+            messagebox.showerror("오류", "폴더 1과 폴더 2는 서로 다른 폴더여야 합니다.")
+            return
+        selected_folders.append(("폴더 2", folder_2))
+
+    if not HEIC_AVAILABLE:
+        for folder_label, folder in selected_folders:
+            if _folder_has_heic(folder):
+                messagebox.showerror(
+                    "오류",
+                    f"{folder_label}에 HEIC/HEIF 파일이 있습니다.\n"
+                    "처리하려면 pillow-heif 설치가 필요합니다.\n\n"
+                    "설치 명령어:\n"
+                    "C:\\Users\\uc808\\AppData\\Local\\Programs\\Python\\Python313\\python.exe -m pip install pillow-heif"
+                )
+                return
+
+    folder_tasks = []
+    for folder_label, folder in selected_folders:
+        image_files = get_image_files(folder)
+        if not image_files:
+            messagebox.showerror("오류", f"{folder_label}에 이미지 파일이 없습니다.")
+            return
+        folder_tasks.append((folder_label, folder, image_files))
+
+    total_images = sum(len(task[2]) for task in folder_tasks)
+
+    try:
+        title_names = generate_unique_image_names(car_type, total_images)
+    except ValueError as e:
+        messagebox.showerror("오류", str(e))
+        return
+
+    try:
+        title_index = 0
+        processed_count = 0
+
+        for folder_label, folder, image_files in folder_tasks:
+            count_in_folder = len(image_files)
+            folder_titles = title_names[title_index:title_index + count_in_folder]
+            title_index += count_in_folder
+
+            _process_folder_images(folder, image_files, folder_titles)
+
+            processed_count += count_in_folder
+            img_status_var.set(f"{folder_label} 완료 ({processed_count}/{total_images})")
             root.update_idletasks()
-            count += 1
 
         img_status_var.set("완료되었습니다. 이름 변경 + JPG 변환 완료")
-        messagebox.showinfo("완료", "모든 이미지가 변환 및 이름 변경 완료되었습니다.")
+        save_config()
+        messagebox.showinfo(
+            "완료",
+            f"총 {total_images}개 이미지가 변환 및 이름 변경 완료되었습니다.\n"
+            f"(폴더 {len(folder_tasks)}개, 파일명 중복 없음)"
+        )
     except Exception as e:
         messagebox.showerror("오류", f"처리 중 오류 발생:\n{str(e)}")
 
@@ -2706,17 +2804,42 @@ tab3 = tk.Frame(notebook, bg=BG_MAIN)
 notebook.add(tab3, text="  이미지 일괄 변환  ")
 
 img_folder_path = tk.StringVar()
-img_keywords = tk.StringVar()
+img_folder_path_2 = tk.StringVar()
+img_folder_use_1 = tk.BooleanVar(value=True)
+img_folder_use_2 = tk.BooleanVar(value=False)
+img_car_type = tk.StringVar()
 img_status_var = tk.StringVar()
 
 init_app_storage()
 load_config()
 
-tk.Label(tab3, text="작업할 폴더 선택", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(30, 10))
+tk.Label(tab3, text="작업할 폴더 선택 (체크된 폴더만 변환)", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(30, 10))
 
-btn_folder = create_flat_button(tab3, "📂 폴더 찾아보기", img_select_folder, SECONDARY, SECONDARY_HOVER, font=("맑은 고딕", 10, "bold"), pady=8)
-btn_folder.pack()
-tk.Label(tab3, textvariable=img_folder_path, fg=ACCENT, bg=BG_MAIN, font=("맑은 고딕", 10, "bold"), wraplength=700).pack(pady=(10, 5))
+folder1_row = tk.Frame(tab3, bg=BG_MAIN)
+folder1_row.pack(fill="x", padx=40, pady=(0, 4))
+tk.Checkbutton(
+    folder1_row, text="폴더 1", variable=img_folder_use_1, command=save_config,
+    bg=BG_MAIN, fg=TEXT_MAIN, activebackground=BG_MAIN, activeforeground=TEXT_MAIN,
+    font=("맑은 고딕", 10, "bold"), selectcolor=INPUT_BG,
+).pack(side="left")
+create_flat_button(
+    folder1_row, "📂 폴더 찾아보기", lambda: img_select_folder(1),
+    SECONDARY, SECONDARY_HOVER, font=("맑은 고딕", 10, "bold"), pady=8,
+).pack(side="left", padx=(12, 0))
+tk.Label(tab3, textvariable=img_folder_path, fg=ACCENT, bg=BG_MAIN, font=("맑은 고딕", 10, "bold"), wraplength=700).pack(pady=(0, 10))
+
+folder2_row = tk.Frame(tab3, bg=BG_MAIN)
+folder2_row.pack(fill="x", padx=40, pady=(0, 4))
+tk.Checkbutton(
+    folder2_row, text="폴더 2", variable=img_folder_use_2, command=save_config,
+    bg=BG_MAIN, fg=TEXT_MAIN, activebackground=BG_MAIN, activeforeground=TEXT_MAIN,
+    font=("맑은 고딕", 10, "bold"), selectcolor=INPUT_BG,
+).pack(side="left")
+create_flat_button(
+    folder2_row, "📂 폴더 찾아보기", lambda: img_select_folder(2),
+    SECONDARY, SECONDARY_HOVER, font=("맑은 고딕", 10, "bold"), pady=8,
+).pack(side="left", padx=(12, 0))
+tk.Label(tab3, textvariable=img_folder_path_2, fg=ACCENT, bg=BG_MAIN, font=("맑은 고딕", 10, "bold"), wraplength=700).pack(pady=(0, 5))
 
 if HEIC_AVAILABLE:
     heic_text = "✅ HEIC/HEIF 이미지 지원 활성화됨"
@@ -2727,9 +2850,15 @@ else:
 
 tk.Label(tab3, text=heic_text, fg=heic_color, font=("맑은 고딕", 10, "bold"), bg=BG_MAIN).pack(pady=(5, 20))
 
-tk.Label(tab3, text="이미지 키워드 입력 (쉼표 구분)", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(10, 10))
-img_entry = tk.Entry(tab3, textvariable=img_keywords, font=("맑은 고딕", 11), width=50, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center")
+tk.Label(tab3, text="차종 입력", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(10, 5))
+tk.Label(
+    tab3,
+    text="키워드는 자동 조합됩니다 (순정연동, 시공, 가격, 라이트, 튜닝, kc인증, 스피커, 에이비클, 시공후기, 아크릴, 전용어플, 전문점, 광주, 전주, 순천, 목포, 군산, 여수, 익산, 광양)",
+    font=("맑은 고딕", 9), bg=BG_MAIN, fg=TEXT_MUTED, wraplength=720, justify="center",
+).pack(pady=(0, 8))
+img_entry = tk.Entry(tab3, textvariable=img_car_type, font=("맑은 고딕", 11), width=50, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center")
 img_entry.pack(pady=5, ipady=8)
+img_entry.bind("<FocusOut>", lambda event: save_config())
 
 btn_start_img = create_flat_button(tab3, "🚀 변환 및 이름 변경 시작", start_img_process, ACCENT, ACCENT_HOVER, font=("맑은 고딕", 12, "bold"), pady=12)
 btn_start_img.pack(pady=30, ipadx=20)
