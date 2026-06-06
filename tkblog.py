@@ -51,7 +51,8 @@ pyautogui.FAILSAFE = True
 
 # 현재 선택된 txt 파일명
 current_selected_file = None
-preferred_chrome_hwnd = None
+preferred_browser_hwnd = None
+preferred_browser_kind = "chrome"
 
 DEFAULT_PROMPT_TEMPLATE = """Convert the following YouTube script into a Naver blog post optimized for TOP search ranking.
 
@@ -380,6 +381,16 @@ CHROME_CANDIDATES = (
     os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
 )
 
+EDGE_CANDIDATES = (
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+)
+
+BROWSER_TITLE_FRAGMENTS = {
+    "chrome": ("Chrome", "네이버", "Naver", "naver.com"),
+    "edge": ("Edge", "Microsoft Edge", "네이버", "Naver", "naver.com"),
+}
+
 LOGIN_TEMPLATE = ""
 HELP_HEADER_TEMPLATE = ""
 SE_TEMPLATE = ""
@@ -412,8 +423,13 @@ DEFAULT_BLOG_WRITE_URL_1 = ""
 DEFAULT_NAVER_ID_2 = ""
 DEFAULT_NAVER_PASSWORD_2 = ""
 DEFAULT_BLOG_WRITE_URL_2 = ""
+DEFAULT_NAVER_ID_3 = ""
+DEFAULT_NAVER_PASSWORD_3 = ""
+DEFAULT_BLOG_WRITE_URL_3 = ""
 BLOG_STORAGE_MARKER_TITLE = "\n<<<BLOG2_TITLE>>>\n"
 BLOG_STORAGE_MARKER_BODY = "\n<<<BLOG2_BODY>>>\n"
+BLOG_STORAGE_MARKER_TITLE_3 = "\n<<<BLOG3_TITLE>>>\n"
+BLOG_STORAGE_MARKER_BODY_3 = "\n<<<BLOG3_BODY>>>\n"
 
 DEFAULT_CONFIDENCE = 0.85
 SEARCH_INTERVAL = 0.25
@@ -554,12 +570,16 @@ def _build_config_data():
         "prompt_button_names": prompt_button_names,
         "phone_number_1": phone_number_var_1.get().strip(),
         "phone_number_2": phone_number_var_2.get().strip(),
+        "phone_number_3": phone_number_var_3.get().strip(),
         "naver_id_1": naver_id_var_1.get().strip(),
         "naver_password_1": naver_password_var_1.get().strip(),
         "blog_write_url_1": blog_write_url_var_1.get().strip(),
         "naver_id_2": naver_id_var_2.get().strip(),
         "naver_password_2": naver_password_var_2.get().strip(),
         "blog_write_url_2": blog_write_url_var_2.get().strip(),
+        "naver_id_3": naver_id_var_3.get().strip(),
+        "naver_password_3": naver_password_var_3.get().strip(),
+        "blog_write_url_3": blog_write_url_var_3.get().strip(),
         "blog_run_mode": int(blog_run_mode_var.get()),
         "speed_cpm": int(speed_scale.get()),
     }
@@ -626,12 +646,19 @@ def load_config():
         if loaded_phone_number_2:
             phone_number_var_2.set(loaded_phone_number_2)
 
+        loaded_phone_number_3 = str(data.get("phone_number_3", DEFAULT_PHONE_NUMBER)).strip()
+        if loaded_phone_number_3:
+            phone_number_var_3.set(loaded_phone_number_3)
+
         naver_id_var_1.set(str(data.get("naver_id_1", DEFAULT_NAVER_ID_1)).strip())
         naver_password_var_1.set(str(data.get("naver_password_1", DEFAULT_NAVER_PASSWORD_1)).strip())
         blog_write_url_var_1.set(str(data.get("blog_write_url_1", DEFAULT_BLOG_WRITE_URL_1)).strip())
         naver_id_var_2.set(str(data.get("naver_id_2", DEFAULT_NAVER_ID_2)).strip())
         naver_password_var_2.set(str(data.get("naver_password_2", DEFAULT_NAVER_PASSWORD_2)).strip())
         blog_write_url_var_2.set(str(data.get("blog_write_url_2", DEFAULT_BLOG_WRITE_URL_2)).strip())
+        naver_id_var_3.set(str(data.get("naver_id_3", DEFAULT_NAVER_ID_3)).strip())
+        naver_password_var_3.set(str(data.get("naver_password_3", DEFAULT_NAVER_PASSWORD_3)).strip())
+        blog_write_url_var_3.set(str(data.get("blog_write_url_3", DEFAULT_BLOG_WRITE_URL_3)).strip())
         blog_run_mode_var.set(int(data.get("blog_run_mode", 1)))
         speed_scale.set(int(data.get("speed_cpm", DEFAULT_SPEED_CPM)))
         update_speed_label()
@@ -664,6 +691,17 @@ def get_txt_folder():
 
 def split_blog_file_content(raw_text: str):
     raw_text = raw_text.replace("\r\n", "\n")
+    title3, body3 = "", ""
+
+    if BLOG_STORAGE_MARKER_TITLE_3 in raw_text and BLOG_STORAGE_MARKER_BODY_3 in raw_text:
+        try:
+            before_blog3, rest3 = raw_text.split(BLOG_STORAGE_MARKER_TITLE_3, 1)
+            title3_raw, body3_raw = rest3.split(BLOG_STORAGE_MARKER_BODY_3, 1)
+            title3 = title3_raw.strip()
+            body3 = body3_raw.lstrip("\n")
+            raw_text = before_blog3
+        except Exception:
+            title3, body3 = "", ""
 
     if BLOG_STORAGE_MARKER_TITLE in raw_text and BLOG_STORAGE_MARKER_BODY in raw_text:
         try:
@@ -672,12 +710,12 @@ def split_blog_file_content(raw_text: str):
             title1, body1 = split_legacy_title_and_body(blog1_raw)
             title2 = blog2_title_raw.strip()
             body2 = blog2_body_raw.lstrip("\n")
-            return title1, body1, title2, body2
+            return title1, body1, title2, body2, title3, body3
         except Exception:
             pass
 
     title1, body1 = split_legacy_title_and_body(raw_text)
-    return title1, body1, "", ""
+    return title1, body1, "", "", title3, body3
 
 
 def split_legacy_title_and_body(raw_text: str):
@@ -692,15 +730,20 @@ def split_legacy_title_and_body(raw_text: str):
     return title, body
 
 
-def combine_blog_file_content(title1: str, body1: str, title2: str, body2: str):
+def combine_blog_file_content(title1: str, body1: str, title2: str, body2: str, title3: str = "", body3: str = ""):
     primary = combine_legacy_title_and_body(title1, body1)
     title2 = title2.rstrip()
     body2 = body2.rstrip()
+    title3 = title3.rstrip()
+    body3 = body3.rstrip()
 
-    if not title2 and not body2:
-        return primary
+    if title2 or body2:
+        primary = f"{primary}{BLOG_STORAGE_MARKER_TITLE}{title2}{BLOG_STORAGE_MARKER_BODY}{body2}"
 
-    return f"{primary}{BLOG_STORAGE_MARKER_TITLE}{title2}{BLOG_STORAGE_MARKER_BODY}{body2}"
+    if title3 or body3:
+        primary = f"{primary}{BLOG_STORAGE_MARKER_TITLE_3}{title3}{BLOG_STORAGE_MARKER_BODY_3}{body3}"
+
+    return primary
 
 
 def combine_legacy_title_and_body(title: str, body: str):
@@ -720,6 +763,8 @@ def get_title_and_content_values():
         editor_1.get("1.0", tk.END).rstrip(),
         title_var_2.get().strip(),
         editor_2.get("1.0", tk.END).rstrip(),
+        title_var_3.get().strip(),
+        editor_3.get("1.0", tk.END).rstrip(),
     )
 
 
@@ -782,13 +827,13 @@ def save_txt_file():
         messagebox.showwarning("알림", "저장할 파일을 선택하세요.")
         return
 
-    title1, content1, title2, content2 = get_title_and_content_values()
+    title1, content1, title2, content2, title3, content3 = get_title_and_content_values()
 
-    if not title1 and not content1 and not title2 and not content2:
+    if not title1 and not content1 and not title2 and not content2 and not title3 and not content3:
         messagebox.showwarning("알림", "제목 또는 내용을 입력하세요.")
         return
 
-    save_text = combine_blog_file_content(title1, content1, title2, content2)
+    save_text = combine_blog_file_content(title1, content1, title2, content2, title3, content3)
 
     try:
         full_path = os.path.join(get_txt_folder(), file_name)
@@ -903,7 +948,7 @@ def on_select_txt(event=None):
         with open(full_path, "r", encoding="utf-8") as f:
             raw_text = f.read()
 
-        title1, body1, title2, body2 = split_blog_file_content(raw_text)
+        title1, body1, title2, body2, title3, body3 = split_blog_file_content(raw_text)
 
         title_var_1.set(title1)
         editor_1.delete("1.0", tk.END)
@@ -912,6 +957,10 @@ def on_select_txt(event=None):
         title_var_2.set(title2)
         editor_2.delete("1.0", tk.END)
         editor_2.insert("1.0", body2)
+
+        title_var_3.set(title3)
+        editor_3.delete("1.0", tk.END)
+        editor_3.insert("1.0", body3)
 
         set_status(f"선택됨: {file_name}")
         keep_listbox_selection()
@@ -926,6 +975,8 @@ def on_listbox_focus_out(event=None):
 def get_phone_number(blog_index: int) -> str:
     if blog_index == 2:
         value = phone_number_var_2.get().strip()
+    elif blog_index == 3:
+        value = phone_number_var_3.get().strip()
     else:
         value = phone_number_var_1.get().strip()
     return value or DEFAULT_PHONE_NUMBER
@@ -939,7 +990,7 @@ def select_recent_typed_text(char_count: int) -> None:
     if char_count <= 0:
         return
 
-    activate_chrome_window()
+    activate_browser_window()
     time.sleep(0.5)
 
     with kb_controller.pressed(Key.shift):
@@ -1104,7 +1155,20 @@ def find_chrome() -> Optional[str]:
     return None
 
 
-def force_chrome_window_geometry(window) -> None:
+def find_edge() -> Optional[str]:
+    for path in EDGE_CANDIDATES:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def find_browser(browser_kind: str) -> Optional[str]:
+    if browser_kind == "edge":
+        return find_edge()
+    return find_chrome()
+
+
+def force_browser_window_geometry(window) -> None:
     try:
         window.moveTo(WIN_X, WIN_Y)
         time.sleep(0.05)
@@ -1114,20 +1178,48 @@ def force_chrome_window_geometry(window) -> None:
         pass
 
 
-def get_chrome_windows():
+def _window_matches_browser_kind(window, browser_kind: str) -> bool:
+    title = (getattr(window, "title", "") or "").lower()
+    if "edge" in title or "microsoft edge" in title:
+        return browser_kind == "edge"
+    if "chrome" in title and "edge" not in title:
+        return browser_kind == "chrome"
+    return False
+
+
+def get_browser_windows(browser_kind: str = "chrome"):
     seen = set()
     windows = []
-    for title_fragment in ("Chrome", "네이버", "Naver", "naver.com"):
+    title_fragments = BROWSER_TITLE_FRAGMENTS.get(browser_kind, BROWSER_TITLE_FRAGMENTS["chrome"])
+    for title_fragment in title_fragments:
         for w in gw.getWindowsWithTitle(title_fragment):
             hwnd = getattr(w, "_hWnd", None)
             if hwnd in seen:
                 continue
-            seen.add(hwnd)
-            windows.append(w)
+
+            if _window_matches_browser_kind(w, browser_kind):
+                seen.add(hwnd)
+                windows.append(w)
+            elif (
+                preferred_browser_kind == browser_kind
+                and preferred_browser_hwnd is not None
+                and hwnd == preferred_browser_hwnd
+            ):
+                # 네이버 페이지처럼 창 제목에 브라우저 이름이 없어도 현재 작업 창은 포함합니다.
+                seen.add(hwnd)
+                windows.append(w)
     return windows
 
 
-def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bool:
+def get_chrome_windows():
+    return get_browser_windows("chrome")
+
+
+def get_edge_windows():
+    return get_browser_windows("edge")
+
+
+def activate_specific_browser_window(window, adjust_geometry: bool = False) -> bool:
     if window is None:
         return False
     try:
@@ -1135,7 +1227,7 @@ def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bo
             window.restore()
             time.sleep(0.15)
         if adjust_geometry:
-            force_chrome_window_geometry(window)
+            force_browser_window_geometry(window)
             time.sleep(0.1)
         window.activate()
         time.sleep(0.2)
@@ -1144,17 +1236,24 @@ def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bo
         return False
 
 
-def activate_chrome_window(adjust_geometry: bool = False) -> bool:
-    global preferred_chrome_hwnd
+def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bool:
+    return activate_specific_browser_window(window, adjust_geometry=adjust_geometry)
 
-    if preferred_chrome_hwnd is not None:
-        for w in get_chrome_windows():
-            if getattr(w, "_hWnd", None) == preferred_chrome_hwnd:
-                if activate_specific_chrome_window(w, adjust_geometry=adjust_geometry):
+
+def activate_browser_window(adjust_geometry: bool = False) -> bool:
+    global preferred_browser_hwnd, preferred_browser_kind
+
+    browser_kind = preferred_browser_kind or "chrome"
+    browser_windows = get_browser_windows(browser_kind)
+
+    if preferred_browser_hwnd is not None:
+        for w in browser_windows:
+            if getattr(w, "_hWnd", None) == preferred_browser_hwnd:
+                if activate_specific_browser_window(w, adjust_geometry=adjust_geometry):
                     return True
 
-    for w in get_chrome_windows():
-        if activate_specific_chrome_window(w, adjust_geometry=adjust_geometry):
+    for w in browser_windows:
+        if activate_specific_browser_window(w, adjust_geometry=adjust_geometry):
             return True
     return False
 
@@ -1173,7 +1272,7 @@ def locate_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDE
         if stop_flag:
             return None
 
-        activate_chrome_window()
+        activate_browser_window()
 
         try:
             loc = pyautogui.locateOnScreen(
@@ -1199,7 +1298,7 @@ def locate_image_once(template_path: str, confidence: float = DEFAULT_CONFIDENCE
     if not os.path.isfile(template_path):
         return None
 
-    activate_chrome_window()
+    activate_browser_window()
 
     try:
         return pyautogui.locateOnScreen(
@@ -1244,7 +1343,7 @@ def click_image_limited(template_path: str, attempts: int = 2, confidence: float
 
 
 def scroll_horizontal_to_right() -> None:
-    activate_chrome_window()
+    activate_browser_window()
 
     try:
         original_x, original_y = pyautogui.position()
@@ -1306,7 +1405,7 @@ def click_emdfhr_after_login() -> bool:
 
 def navigate_to_blog_write(blog_write_url: str) -> None:
     time.sleep(1.5)
-    activate_chrome_window()
+    activate_browser_window()
     time.sleep(0.15)
     pyautogui.hotkey("ctrl", "l")
     time.sleep(0.15)
@@ -1318,7 +1417,7 @@ def navigate_to_blog_write(blog_write_url: str) -> None:
 
 def try_cnlth_before_help_header() -> None:
     time.sleep(1.5)
-    activate_chrome_window()
+    activate_browser_window()
     time.sleep(0.2)
 
     click_image_limited(CNLTH_TEMPLATE, attempts=2, confidence=0.85, delay_sec=0.4)
@@ -1326,7 +1425,7 @@ def try_cnlth_before_help_header() -> None:
 
 def dismiss_help_popup_or_arrow_up() -> None:
     time.sleep(1.0)
-    activate_chrome_window()
+    activate_browser_window()
     time.sleep(0.2)
 
     if not os.path.isfile(HELP_HEADER_TEMPLATE):
@@ -1341,7 +1440,7 @@ def dismiss_help_popup_or_arrow_up() -> None:
         if stop_flag:
             return
 
-        activate_chrome_window()
+        activate_browser_window()
         try:
             found = pyautogui.locateOnScreen(
                 HELP_HEADER_TEMPLATE,
@@ -1371,7 +1470,7 @@ def dismiss_help_popup_or_arrow_up() -> None:
 
 def click_title_area_by_coordinate() -> None:
     """이미지 인식이 실패했을 때 제목 입력칸을 좌표로 클릭합니다."""
-    activate_chrome_window()
+    activate_browser_window()
     time.sleep(0.15)
     pyautogui.click(TITLE_CLICK_X, TITLE_CLICK_Y)
     time.sleep(0.25)
@@ -1379,7 +1478,7 @@ def click_title_area_by_coordinate() -> None:
 
 def click_body_area_by_coordinate() -> None:
     """본문 입력칸을 좌표로 클릭합니다."""
-    activate_chrome_window()
+    activate_browser_window()
     time.sleep(0.15)
     pyautogui.click(BODY_CLICK_X, BODY_CLICK_Y)
     time.sleep(0.25)
@@ -1429,12 +1528,23 @@ def run_se_action(blog_label: str = "") -> bool:
     return True
 
 
-def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: str, blog_label: str, use_incognito: bool = True) -> None:
-    global preferred_chrome_hwnd
+def run_pre_typing_action(
+    naver_id: str,
+    naver_password: str,
+    blog_write_url: str,
+    blog_label: str,
+    use_incognito: bool = True,
+    browser_kind: str = "chrome",
+) -> None:
+    global preferred_browser_hwnd, preferred_browser_kind
 
-    chrome = find_chrome()
-    if not chrome:
-        raise RuntimeError("Chrome 설치 경로를 찾을 수 없습니다.")
+    browser_kind = browser_kind if browser_kind in ("chrome", "edge") else "chrome"
+    preferred_browser_kind = browser_kind
+
+    browser_exe = find_browser(browser_kind)
+    if not browser_exe:
+        browser_name = "Edge" if browser_kind == "edge" else "Chrome"
+        raise RuntimeError(f"{browser_name} 설치 경로를 찾을 수 없습니다.")
 
     if not naver_id:
         raise RuntimeError(f"{blog_label} 네이버 아이디를 입력하세요.")
@@ -1443,20 +1553,26 @@ def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: st
     if not blog_write_url:
         raise RuntimeError(f"{blog_label} 블로그 글쓰기 주소를 입력하세요.")
 
-    before_hwnds = {getattr(w, "_hWnd", None) for w in get_chrome_windows()}
+    get_windows = get_edge_windows if browser_kind == "edge" else get_chrome_windows
+    browser_label = "Edge" if browser_kind == "edge" else "크롬"
+    before_hwnds = {getattr(w, "_hWnd", None) for w in get_windows()}
 
     launch_cmd = [
-        chrome,
+        browser_exe,
         "--new-window",
         f"--window-size={WIN_W},{WIN_H}",
         f"--window-position={WIN_X},{WIN_Y}",
         "https://www.naver.com",
     ]
     if use_incognito:
-        launch_cmd.insert(1, "--incognito")
-        set_status(f"{blog_label} 사전 작업: 시크릿 크롬 창 실행 중...")
+        if browser_kind == "edge":
+            launch_cmd.insert(1, "--inprivate")
+            set_status(f"{blog_label} 사전 작업: InPrivate Edge 창 실행 중...")
+        else:
+            launch_cmd.insert(1, "--incognito")
+            set_status(f"{blog_label} 사전 작업: 시크릿 크롬 창 실행 중...")
     else:
-        set_status(f"{blog_label} 사전 작업: 일반 크롬 창 실행 중...")
+        set_status(f"{blog_label} 사전 작업: 일반 {browser_label} 창 실행 중...")
 
     subprocess.Popen(launch_cmd)
     time.sleep(3.0)
@@ -1466,7 +1582,7 @@ def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: st
     while time.time() < deadline:
         if stop_flag:
             return
-        current_windows = get_chrome_windows()
+        current_windows = get_windows()
         new_windows = [w for w in current_windows if getattr(w, "_hWnd", None) not in before_hwnds]
         if new_windows:
             target_window = new_windows[-1]
@@ -1474,19 +1590,19 @@ def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: st
         time.sleep(0.2)
 
     if target_window is None:
-        current_windows = get_chrome_windows()
+        current_windows = get_windows()
         if current_windows:
             target_window = current_windows[-1]
 
     if target_window is None:
-        raise RuntimeError(f"{blog_label} 새 크롬 창을 찾지 못했습니다.")
+        raise RuntimeError(f"{blog_label} 새 {browser_label} 창을 찾지 못했습니다.")
 
-    preferred_chrome_hwnd = getattr(target_window, "_hWnd", None)
+    preferred_browser_hwnd = getattr(target_window, "_hWnd", None)
 
-    set_status(f"{blog_label} 사전 작업: 크롬 창 활성화 중...")
-    force_chrome_window_geometry(target_window)
-    if not activate_specific_chrome_window(target_window):
-        activate_chrome_window()
+    set_status(f"{blog_label} 사전 작업: {browser_label} 창 활성화 중...")
+    force_browser_window_geometry(target_window)
+    if not activate_specific_browser_window(target_window):
+        activate_browser_window()
 
     time.sleep(0.2)
 
@@ -1543,19 +1659,36 @@ def run_pre_typing_action(naver_id: str, naver_password: str, blog_write_url: st
     set_status(f"{blog_label} 사전 작업 완료")
 
 
-def move_to_body_after_title(blog_label: str) -> None:
+def move_to_body_after_title(blog_index: int) -> None:
     pyautogui.press("enter")
-    if "2" in blog_label:
-        time.sleep(1.8)
-    else:
+    if blog_index == 1:
         time.sleep(1.2)
+    else:
+        time.sleep(1.8)
 
     # 엔터 후 포커스가 본문으로 안 내려가는 경우가 있어 본문 위치를 한 번 더 클릭합니다.
     click_body_area_by_coordinate()
 
 
-def run_blog_typing_workflow(blog_label: str, blog_index: int, naver_id: str, naver_password: str, blog_write_url: str, title: str, content: str, use_incognito: bool = True) -> None:
-    run_pre_typing_action(naver_id, naver_password, blog_write_url, blog_label, use_incognito=use_incognito)
+def run_blog_typing_workflow(
+    blog_label: str,
+    blog_index: int,
+    naver_id: str,
+    naver_password: str,
+    blog_write_url: str,
+    title: str,
+    content: str,
+    use_incognito: bool = True,
+    browser_kind: str = "chrome",
+) -> None:
+    run_pre_typing_action(
+        naver_id,
+        naver_password,
+        blog_write_url,
+        blog_label,
+        use_incognito=use_incognito,
+        browser_kind=browser_kind,
+    )
 
     if stop_flag:
         return
@@ -1568,7 +1701,7 @@ def run_blog_typing_workflow(blog_label: str, blog_index: int, naver_id: str, na
     if stop_flag:
         return
 
-    move_to_body_after_title(blog_label)
+    move_to_body_after_title(blog_index)
 
     if content:
         set_status(f"{blog_label} 본문 입력 중...")
@@ -1581,7 +1714,7 @@ def start_typing():
     if running:
         return
 
-    title1, content1, title2, content2 = get_title_and_content_values()
+    title1, content1, title2, content2, title3, content3 = get_title_and_content_values()
     blog_mode = int(blog_run_mode_var.get())
 
     if not title1 and not content1:
@@ -1592,12 +1725,20 @@ def start_typing():
         messagebox.showwarning("경고", "첫번째 블로그 제목을 입력하세요.")
         return
 
-    if blog_mode == 2:
+    if blog_mode >= 2:
         if not title2 and not content2:
             messagebox.showwarning("경고", "두번째 블로그 쓰기를 선택했으면 두번째 제목 또는 내용을 입력하세요.")
             return
         if not title2:
             messagebox.showwarning("경고", "두번째 블로그 제목을 입력하세요.")
+            return
+
+    if blog_mode == 3:
+        if not title3 and not content3:
+            messagebox.showwarning("경고", "세번째 블로그 쓰기를 선택했으면 세번째 제목 또는 내용을 입력하세요.")
+            return
+        if not title3:
+            messagebox.showwarning("경고", "세번째 블로그 제목을 입력하세요.")
             return
 
     running = True
@@ -1629,7 +1770,7 @@ def start_typing():
                 set_status("작업 중지됨")
                 return
 
-            if blog_mode == 2:
+            if blog_mode >= 2:
                 set_status("블로그 1 완료, 블로그 2 일반 크롬 새 창 준비 중...")
 
                 if stop_flag:
@@ -1647,12 +1788,40 @@ def start_typing():
                     title2,
                     content2,
                     use_incognito=False,
+                    browser_kind="chrome",
+                )
+
+            if stop_flag:
+                set_status("작업 중지됨")
+                return
+
+            if blog_mode == 3:
+                set_status("블로그 2 완료, 블로그 3 Edge 새 창 준비 중...")
+
+                if stop_flag:
+                    set_status("작업 중지됨")
+                    return
+
+                time.sleep(1.0)
+
+                run_blog_typing_workflow(
+                    "블로그 3",
+                    3,
+                    naver_id_var_3.get().strip(),
+                    naver_password_var_3.get().strip(),
+                    blog_write_url_var_3.get().strip(),
+                    title3,
+                    content3,
+                    use_incognito=False,
+                    browser_kind="edge",
                 )
 
             if stop_flag:
                 set_status("작업 중지됨")
             else:
-                if blog_mode == 2:
+                if blog_mode == 3:
+                    set_status("블로그 1, 2, 3 사전 작업 + 타이핑 완료")
+                elif blog_mode == 2:
                     set_status("블로그 1, 2 사전 작업 + 타이핑 완료")
                 else:
                     set_status("블로그 1 사전 작업 + 타이핑 완료")
@@ -2007,6 +2176,9 @@ blog_write_url_var_1 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_1)
 naver_id_var_2 = tk.StringVar(value=DEFAULT_NAVER_ID_2)
 naver_password_var_2 = tk.StringVar(value=DEFAULT_NAVER_PASSWORD_2)
 blog_write_url_var_2 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_2)
+naver_id_var_3 = tk.StringVar(value=DEFAULT_NAVER_ID_3)
+naver_password_var_3 = tk.StringVar(value=DEFAULT_NAVER_PASSWORD_3)
+blog_write_url_var_3 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_3)
 
 settings_frame = ttk.LabelFrame(right_f, text="  ⚙️ 블로그 계정 / 실행 설정  ", padding=(15, 15))
 settings_frame.pack(fill="x", pady=(0, 10))
@@ -2015,19 +2187,30 @@ mode_frame = tk.Frame(settings_frame, bg=BG_PANEL)
 mode_frame.pack(fill="x", pady=(0, 12))
 tk.Label(mode_frame, text="실행 방식", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(side="left")
 ttk.Radiobutton(mode_frame, text="블로그 1개 쓰기", variable=blog_run_mode_var, value=1, command=save_config).pack(side="left", padx=(15, 10))
-ttk.Radiobutton(mode_frame, text="블로그 2개 쓰기", variable=blog_run_mode_var, value=2, command=save_config).pack(side="left")
+ttk.Radiobutton(mode_frame, text="블로그 2개 쓰기", variable=blog_run_mode_var, value=2, command=save_config).pack(side="left", padx=(0, 10))
+ttk.Radiobutton(mode_frame, text="블로그 3개 쓰기 (3번째 Edge)", variable=blog_run_mode_var, value=3, command=save_config).pack(side="left")
 
 account_wrap = tk.Frame(settings_frame, bg=BG_PANEL)
 account_wrap.pack(fill="x")
 
-account1_frame = ttk.LabelFrame(account_wrap, text="  첫번째 블로그 계정  ", padding=(12, 12))
+account_row1 = tk.Frame(account_wrap, bg=BG_PANEL)
+account_row1.pack(fill="x")
+
+account1_frame = ttk.LabelFrame(account_row1, text="  첫번째 블로그 계정 (Chrome 시크릿)  ", padding=(12, 12))
 account1_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
-account2_frame = ttk.LabelFrame(account_wrap, text="  두번째 블로그 계정  ", padding=(12, 12))
+account2_frame = ttk.LabelFrame(account_row1, text="  두번째 블로그 계정 (Chrome)  ", padding=(12, 12))
 account2_frame.pack(side="left", fill="both", expand=True, padx=(5, 0))
+
+account_row2 = tk.Frame(account_wrap, bg=BG_PANEL)
+account_row2.pack(fill="x", pady=(8, 0))
+
+account3_frame = ttk.LabelFrame(account_row2, text="  세번째 블로그 계정 (Edge)  ", padding=(12, 12))
+account3_frame.pack(side="left", fill="both", expand=True)
 
 for parent, id_var, pw_var, url_var in (
     (account1_frame, naver_id_var_1, naver_password_var_1, blog_write_url_var_1),
     (account2_frame, naver_id_var_2, naver_password_var_2, blog_write_url_var_2),
+    (account3_frame, naver_id_var_3, naver_password_var_3, blog_write_url_var_3),
 ):
     tk.Label(parent, text="네이버 아이디", font=("맑은 고딕", 9, "bold"), bg=BG_PANEL, fg=TEXT_MUTED).pack(anchor="w")
     entry_id = tk.Entry(parent, textvariable=id_var, font=("맑은 고딕", 10), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
@@ -2049,27 +2232,36 @@ phone_wrap_frame.pack(fill="x", pady=(0, 10))
 
 phone_left_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 1 견적상담 전화번호  ", padding=(12, 12))
 phone_left_frame.pack(side="left", fill="x", expand=True, padx=(0, 5))
-phone_right_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 2 견적상담 전화번호  ", padding=(12, 12))
-phone_right_frame.pack(side="left", fill="x", expand=True, padx=(5, 0))
+phone_center_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 2 견적상담 전화번호  ", padding=(12, 12))
+phone_center_frame.pack(side="left", fill="x", expand=True, padx=(0, 5))
+phone_right_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 3 견적상담 전화번호  ", padding=(12, 12))
+phone_right_frame.pack(side="left", fill="x", expand=True)
 
 phone_number_var_1 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
 phone_number_var_2 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
+phone_number_var_3 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
 
 phone_entry_1 = tk.Entry(phone_left_frame, textvariable=phone_number_var_1, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
 phone_entry_1.pack(fill="x", ipady=6)
 phone_entry_1.bind("<FocusOut>", lambda event: save_config())
 
-phone_entry_2 = tk.Entry(phone_right_frame, textvariable=phone_number_var_2, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
+phone_entry_2 = tk.Entry(phone_center_frame, textvariable=phone_number_var_2, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
 phone_entry_2.pack(fill="x", ipady=6)
 phone_entry_2.bind("<FocusOut>", lambda event: save_config())
+
+phone_entry_3 = tk.Entry(phone_right_frame, textvariable=phone_number_var_3, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
+phone_entry_3.pack(fill="x", ipady=6)
+phone_entry_3.bind("<FocusOut>", lambda event: save_config())
 
 editor_wrap = ttk.PanedWindow(right_f, orient=tk.HORIZONTAL)
 editor_wrap.pack(fill="both", expand=True, pady=5)
 
 blog1_editor_frame = ttk.LabelFrame(editor_wrap, text="  📝 첫번째 블로그 글  ", padding=(12, 12))
 blog2_editor_frame = ttk.LabelFrame(editor_wrap, text="  📝 두번째 블로그 글  ", padding=(12, 12))
+blog3_editor_frame = ttk.LabelFrame(editor_wrap, text="  📝 세번째 블로그 글  ", padding=(12, 12))
 editor_wrap.add(blog1_editor_frame, weight=1)
 editor_wrap.add(blog2_editor_frame, weight=1)
+editor_wrap.add(blog3_editor_frame, weight=1)
 
 # 첫번째 블로그 입력창
 tk.Label(blog1_editor_frame, text="📰 첫번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
@@ -2090,6 +2282,16 @@ title_entry_2.pack(fill="x", pady=(0, 10), ipady=8)
 tk.Label(blog2_editor_frame, text="✍️ 두번째 내용", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 editor_2 = tk.Text(blog2_editor_frame, font=("맑은 고딕", 11), undo=True, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=10, pady=10)
 editor_2.pack(fill="both", expand=True)
+
+# 세번째 블로그 입력창
+tk.Label(blog3_editor_frame, text="📰 세번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
+title_var_3 = tk.StringVar()
+title_entry_3 = tk.Entry(blog3_editor_frame, textvariable=title_var_3, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
+title_entry_3.pack(fill="x", pady=(0, 10), ipady=8)
+
+tk.Label(blog3_editor_frame, text="✍️ 세번째 내용", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
+editor_3 = tk.Text(blog3_editor_frame, font=("맑은 고딕", 11), undo=True, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=10, pady=10)
+editor_3.pack(fill="both", expand=True)
 
 speed_frame = ttk.LabelFrame(right_f, text="  ⚡ 타이핑 속도 설정 (CPM)  ", padding=(12, 12))
 speed_frame.pack(fill="x", pady=(15, 5))
