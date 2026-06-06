@@ -444,9 +444,19 @@ kb_controller = Controller()
 
 # ---------------- 입력 유틸 ----------------
 user32 = ctypes.WinDLL("user32", use_last_error=True)
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+wintypes = ctypes.wintypes
 VK_CAPITAL = 0x14
 VK_HANGUL = 0x15
 KEYEVENTF_KEYUP = 0x0002
+SW_RESTORE = 9
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+ASFW_ANY = -1
+
+BROWSER_PROCESS_NAMES = {
+    "chrome": "chrome.exe",
+    "edge": "msedge.exe",
+}
 
 
 def is_capslock_on() -> bool:
@@ -1147,6 +1157,155 @@ def human_like_typing(text: str, blog_index: int = 1):
         index += 1
 
 
+# ---------------- Win32 브라우저 창 제어 ----------------
+def win32_is_valid_hwnd(hwnd) -> bool:
+    try:
+        return bool(hwnd) and bool(user32.IsWindow(hwnd))
+    except Exception:
+        return False
+
+
+def win32_get_process_exe_name(pid: int) -> str:
+    if pid <= 0:
+        return ""
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        return ""
+    try:
+        buffer = ctypes.create_unicode_buffer(512)
+        size = ctypes.c_uint(len(buffer))
+        if kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)):
+            return os.path.basename(buffer.value).lower()
+    except Exception:
+        pass
+    finally:
+        kernel32.CloseHandle(handle)
+    return ""
+
+
+def win32_get_window_rect(hwnd):
+    rect = wintypes.RECT()
+    if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return None
+    return rect
+
+
+def win32_get_window_area(hwnd) -> int:
+    rect = win32_get_window_rect(hwnd)
+    if rect is None:
+        return 0
+    return max(0, rect.right - rect.left) * max(0, rect.bottom - rect.top)
+
+
+def win32_set_window_geometry(hwnd, x: int, y: int, width: int, height: int) -> bool:
+    if not win32_is_valid_hwnd(hwnd):
+        return False
+    try:
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.05)
+        return bool(user32.MoveWindow(hwnd, x, y, width, height, True))
+    except Exception:
+        return False
+
+
+def win32_force_foreground(hwnd) -> bool:
+    if not win32_is_valid_hwnd(hwnd):
+        return False
+    try:
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.05)
+
+        try:
+            user32.AllowSetForegroundWindow(ASFW_ANY)
+        except Exception:
+            pass
+
+        foreground_hwnd = user32.GetForegroundWindow()
+        if foreground_hwnd == hwnd:
+            return True
+
+        foreground_thread = user32.GetWindowThreadProcessId(foreground_hwnd, None)
+        target_thread = user32.GetWindowThreadProcessId(hwnd, None)
+        attached = False
+
+        if foreground_thread and target_thread and foreground_thread != target_thread:
+            attached = bool(user32.AttachThreadInput(foreground_thread, target_thread, True))
+
+        user32.BringWindowToTop(hwnd)
+        user32.ShowWindow(hwnd, SW_RESTORE)
+        user32.SetForegroundWindow(hwnd)
+
+        if attached:
+            user32.AttachThreadInput(foreground_thread, target_thread, False)
+
+        time.sleep(0.15)
+        return user32.GetForegroundWindow() == hwnd
+    except Exception:
+        return False
+
+
+def win32_activate_browser_hwnd(hwnd, adjust_geometry: bool = True) -> bool:
+    if not win32_is_valid_hwnd(hwnd):
+        return False
+    if adjust_geometry:
+        win32_set_window_geometry(hwnd, WIN_X, WIN_Y, WIN_W, WIN_H)
+    return win32_force_foreground(hwnd)
+
+
+def get_browser_hwnds(browser_kind: str = "chrome") -> set:
+    process_name = BROWSER_PROCESS_NAMES.get(browser_kind, BROWSER_PROCESS_NAMES["chrome"])
+    hwnds = set()
+
+    def _callback(hwnd, _lparam):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        if win32_get_window_area(hwnd) < 120000:
+            return True
+
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if win32_get_process_exe_name(pid.value) == process_name:
+            hwnds.add(hwnd)
+        return True
+
+    enum_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)(_callback)
+    user32.EnumWindows(enum_proc, 0)
+    return hwnds
+
+
+def pick_largest_browser_hwnd(hwnds) -> Optional[int]:
+    best_hwnd = None
+    best_area = 0
+    for hwnd in hwnds:
+        area = win32_get_window_area(hwnd)
+        if area > best_area:
+            best_area = area
+            best_hwnd = hwnd
+    return best_hwnd
+
+
+def wait_for_new_browser_hwnd(browser_kind: str, before_hwnds: set, timeout_sec: float = 12.0) -> Optional[int]:
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        if stop_flag:
+            return None
+
+        new_hwnds = get_browser_hwnds(browser_kind) - before_hwnds
+        if new_hwnds:
+            return pick_largest_browser_hwnd(new_hwnds)
+
+        time.sleep(0.2)
+
+    current_hwnds = get_browser_hwnds(browser_kind) - before_hwnds
+    if current_hwnds:
+        return pick_largest_browser_hwnd(current_hwnds)
+
+    all_hwnds = get_browser_hwnds(browser_kind)
+    return pick_largest_browser_hwnd(all_hwnds)
+
+
 # ---------------- 사전 실행 자동화 함수 ----------------
 def find_chrome() -> Optional[str]:
     for path in CHROME_CANDIDATES:
@@ -1169,6 +1328,9 @@ def find_browser(browser_kind: str) -> Optional[str]:
 
 
 def force_browser_window_geometry(window) -> None:
+    hwnd = getattr(window, "_hWnd", None)
+    if win32_activate_browser_hwnd(hwnd, adjust_geometry=True):
+        return
     try:
         window.moveTo(WIN_X, WIN_Y)
         time.sleep(0.05)
@@ -1190,6 +1352,13 @@ def _window_matches_browser_kind(window, browser_kind: str) -> bool:
 def get_browser_windows(browser_kind: str = "chrome"):
     seen = set()
     windows = []
+
+    if preferred_browser_hwnd is not None and win32_is_valid_hwnd(preferred_browser_hwnd):
+        for w in gw.getAllWindows():
+            hwnd = getattr(w, "_hWnd", None)
+            if hwnd == preferred_browser_hwnd:
+                return [w]
+
     title_fragments = BROWSER_TITLE_FRAGMENTS.get(browser_kind, BROWSER_TITLE_FRAGMENTS["chrome"])
     for title_fragment in title_fragments:
         for w in gw.getWindowsWithTitle(title_fragment):
@@ -1205,9 +1374,17 @@ def get_browser_windows(browser_kind: str = "chrome"):
                 and preferred_browser_hwnd is not None
                 and hwnd == preferred_browser_hwnd
             ):
-                # 네이버 페이지처럼 창 제목에 브라우저 이름이 없어도 현재 작업 창은 포함합니다.
                 seen.add(hwnd)
                 windows.append(w)
+
+    if not windows:
+        for hwnd in get_browser_hwnds(browser_kind):
+            if preferred_browser_hwnd is not None and hwnd != preferred_browser_hwnd:
+                continue
+            for w in gw.getAllWindows():
+                if getattr(w, "_hWnd", None) == hwnd:
+                    windows.append(w)
+                    break
     return windows
 
 
@@ -1222,6 +1399,11 @@ def get_edge_windows():
 def activate_specific_browser_window(window, adjust_geometry: bool = False) -> bool:
     if window is None:
         return False
+
+    hwnd = getattr(window, "_hWnd", None)
+    if win32_activate_browser_hwnd(hwnd, adjust_geometry=True):
+        return True
+
     try:
         if window.isMinimized:
             window.restore()
@@ -1242,6 +1424,10 @@ def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bo
 
 def activate_browser_window(adjust_geometry: bool = False) -> bool:
     global preferred_browser_hwnd, preferred_browser_kind
+
+    if preferred_browser_hwnd is not None and win32_is_valid_hwnd(preferred_browser_hwnd):
+        if win32_activate_browser_hwnd(preferred_browser_hwnd, adjust_geometry=True):
+            return True
 
     browser_kind = preferred_browser_kind or "chrome"
     browser_windows = get_browser_windows(browser_kind)
@@ -1553,9 +1739,8 @@ def run_pre_typing_action(
     if not blog_write_url:
         raise RuntimeError(f"{blog_label} 블로그 글쓰기 주소를 입력하세요.")
 
-    get_windows = get_edge_windows if browser_kind == "edge" else get_chrome_windows
     browser_label = "Edge" if browser_kind == "edge" else "크롬"
-    before_hwnds = {getattr(w, "_hWnd", None) for w in get_windows()}
+    before_hwnds = get_browser_hwnds(browser_kind)
 
     launch_cmd = [
         browser_exe,
@@ -1575,33 +1760,16 @@ def run_pre_typing_action(
         set_status(f"{blog_label} 사전 작업: 일반 {browser_label} 창 실행 중...")
 
     subprocess.Popen(launch_cmd)
-    time.sleep(3.0)
+    time.sleep(2.0)
 
-    target_window = None
-    deadline = time.time() + 8.0
-    while time.time() < deadline:
-        if stop_flag:
-            return
-        current_windows = get_windows()
-        new_windows = [w for w in current_windows if getattr(w, "_hWnd", None) not in before_hwnds]
-        if new_windows:
-            target_window = new_windows[-1]
-            break
-        time.sleep(0.2)
-
-    if target_window is None:
-        current_windows = get_windows()
-        if current_windows:
-            target_window = current_windows[-1]
-
-    if target_window is None:
+    new_hwnd = wait_for_new_browser_hwnd(browser_kind, before_hwnds, timeout_sec=12.0)
+    if new_hwnd is None:
         raise RuntimeError(f"{blog_label} 새 {browser_label} 창을 찾지 못했습니다.")
 
-    preferred_browser_hwnd = getattr(target_window, "_hWnd", None)
+    preferred_browser_hwnd = new_hwnd
 
     set_status(f"{blog_label} 사전 작업: {browser_label} 창 활성화 중...")
-    force_browser_window_geometry(target_window)
-    if not activate_specific_browser_window(target_window):
+    if not win32_activate_browser_hwnd(preferred_browser_hwnd, adjust_geometry=True):
         activate_browser_window()
 
     time.sleep(0.2)
