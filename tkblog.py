@@ -827,37 +827,13 @@ def get_blog_editor_by_index(blog_index: int):
     return mapping[blog_index]
 
 
-def _split_body_paragraphs(body: str) -> list[str]:
-    body = body.replace("\r\n", "\n").strip()
-    if not body:
-        return []
-
-    paragraphs = [part.strip() for part in re.split(r"\n\s*\n+", body) if part.strip()]
-    if len(paragraphs) >= 5:
-        return paragraphs
-
-    lines = [line.strip() for line in body.split("\n") if line.strip()]
-    if len(lines) >= 5:
-        return lines
-
-    return paragraphs or lines
-
-
-def insert_text_after_nth_paragraph(body: str, insert_text: str, paragraph_index: int = 5) -> str:
+def append_text_to_body_bottom(body: str, insert_text: str) -> str:
     insert_text = insert_text.strip()
     if not insert_text:
         return body
-
-    paragraphs = _split_body_paragraphs(body)
-    if len(paragraphs) < paragraph_index:
-        if body.strip():
-            return f"{body.rstrip()}\n\n{insert_text}"
-        return insert_text
-
-    before = paragraphs[:paragraph_index]
-    after = paragraphs[paragraph_index:]
-    merged = "\n\n".join(before + [insert_text] + after)
-    return merged
+    if body.strip():
+        return f"{body.rstrip()}\n\n{insert_text}"
+    return insert_text
 
 
 def edit_blog_copy_snippet(blog_index: int):
@@ -869,7 +845,7 @@ def edit_blog_copy_snippet(blog_index: int):
 
     tk.Label(
         win,
-        text="복사 시 본문 5번째 단락 아래에 삽입됩니다.",
+        text="복사 시 본문 맨 아래 단락에 삽입됩니다. (제목은 복사되지 않음)",
         font=("맑은 고딕", 10, "bold"),
         bg=BG_MAIN,
         fg=TEXT_MUTED,
@@ -895,27 +871,25 @@ def edit_blog_copy_snippet(blog_index: int):
 
 
 def copy_blog_with_snippet(blog_index: int):
-    title_var, editor = get_blog_editor_by_index(blog_index)
-    title = title_var.get().strip()
+    _, editor = get_blog_editor_by_index(blog_index)
     body = editor.get("1.0", tk.END).rstrip()
     snippet = blog_copy_snippets[blog_index - 1].strip()
 
-    if not title and not body:
-        messagebox.showwarning("알림", f"블로그 {blog_index} 제목 또는 내용을 입력하세요.")
+    if not body:
+        messagebox.showwarning("알림", f"블로그 {blog_index} 내용을 입력하세요.")
         return
 
     if not snippet:
         messagebox.showwarning("알림", "먼저 '복사할 텍스트' 버튼에서 문구를 입력하세요.")
         return
 
-    modified_body = insert_text_after_nth_paragraph(body, snippet, 5)
-    copy_text = combine_legacy_title_and_body(title, modified_body)
+    copy_text = append_text_to_body_bottom(body, snippet)
 
     try:
         root.clipboard_clear()
         root.clipboard_append(copy_text)
         root.update()
-        messagebox.showinfo("완료", f"블로그 {blog_index} 내용이 클립보드에 복사되었습니다!")
+        messagebox.showinfo("완료", f"블로그 {blog_index} 본문이 클립보드에 복사되었습니다!")
     except Exception as e:
         messagebox.showerror("오류", f"클립보드 복사 실패: {e}")
 
