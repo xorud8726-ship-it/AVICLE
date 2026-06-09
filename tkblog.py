@@ -7,6 +7,10 @@ import random
 import itertools
 import threading
 import subprocess
+import base64
+import re
+import urllib.request
+import urllib.error
 import tkinter as tk
 from tkinter import messagebox, ttk, simpledialog, filedialog
 from typing import Optional
@@ -31,6 +35,9 @@ except Exception as e:
     HEIC_AVAILABLE = False
     HEIC_ERROR = str(e)
     print("pillow_heif import 실패:", e)
+
+CURSOR_API_BASE_URL = "https://api.cursor.com/v1"
+CURSOR_RUN_TERMINAL_STATUSES = frozenset({"FINISHED", "ERROR", "CANCELLED", "EXPIRED"})
 
 
 # ---------------- 전역 설정 및 변수 ----------------
@@ -146,6 +153,8 @@ prompt_button_names = DEFAULT_PROMPT_NAMES.copy()
 prompt_copy_buttons = []
 prompt_edit_buttons = []
 prompt_name_buttons = []
+cursor_ai_buttons = []
+blog_copy_snippets = ["", "", ""]
 
 
 # ---------------- 리소스 경로 ----------------
@@ -595,9 +604,10 @@ def _build_config_data():
     return {
         "folder_path": img_folder_path.get(),
         "img_split_count": int(img_split_count.get()),
-        "car_type": img_car_type.get().strip(),
+        "car_type": car_type_var.get().strip(),
         "prompt_templates": prompt_templates,
         "prompt_button_names": prompt_button_names,
+        "blog_copy_snippets": blog_copy_snippets,
         "phone_number_1": phone_number_var_1.get().strip(),
         "phone_number_2": phone_number_var_2.get().strip(),
         "phone_number_3": phone_number_var_3.get().strip(),
@@ -640,7 +650,7 @@ def on_root_close():
 
 
 def load_config():
-    global prompt_templates, prompt_button_names
+    global prompt_templates, prompt_button_names, blog_copy_snippets
 
     config_path = resolve_config_path()
     if not os.path.isfile(config_path):
@@ -654,7 +664,7 @@ def load_config():
         img_split_count.set(int(data.get("img_split_count", 2)))
         saved_car_type = data.get("car_type", "")
         if saved_car_type:
-            img_car_type.set(saved_car_type)
+            car_type_var.set(saved_car_type)
 
         legacy_prompt = data.get("prompt_template")
         if legacy_prompt:
@@ -671,6 +681,12 @@ def load_config():
             for i in range(4):
                 if i < len(loaded_names) and str(loaded_names[i]).strip():
                     prompt_button_names[i] = str(loaded_names[i]).strip()
+
+        loaded_copy_snippets = data.get("blog_copy_snippets", [])
+        if isinstance(loaded_copy_snippets, list) and loaded_copy_snippets:
+            for i in range(3):
+                if i < len(loaded_copy_snippets):
+                    blog_copy_snippets[i] = str(loaded_copy_snippets[i])
 
         loaded_phone_number_1 = str(data.get("phone_number_1", DEFAULT_PHONE_NUMBER)).strip()
         if loaded_phone_number_1:
@@ -802,6 +818,131 @@ def get_title_and_content_values():
     )
 
 
+def get_blog_editor_by_index(blog_index: int):
+    mapping = {
+        1: (title_var_1, editor_1),
+        2: (title_var_2, editor_2),
+        3: (title_var_3, editor_3),
+    }
+    return mapping[blog_index]
+
+
+def _split_body_paragraphs(body: str) -> list[str]:
+    body = body.replace("\r\n", "\n").strip()
+    if not body:
+        return []
+
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n+", body) if part.strip()]
+    if len(paragraphs) >= 5:
+        return paragraphs
+
+    lines = [line.strip() for line in body.split("\n") if line.strip()]
+    if len(lines) >= 5:
+        return lines
+
+    return paragraphs or lines
+
+
+def insert_text_after_nth_paragraph(body: str, insert_text: str, paragraph_index: int = 5) -> str:
+    insert_text = insert_text.strip()
+    if not insert_text:
+        return body
+
+    paragraphs = _split_body_paragraphs(body)
+    if len(paragraphs) < paragraph_index:
+        if body.strip():
+            return f"{body.rstrip()}\n\n{insert_text}"
+        return insert_text
+
+    before = paragraphs[:paragraph_index]
+    after = paragraphs[paragraph_index:]
+    merged = "\n\n".join(before + [insert_text] + after)
+    return merged
+
+
+def edit_blog_copy_snippet(blog_index: int):
+    win = tk.Toplevel(root)
+    win.title(f"블로그 {blog_index} 복사할 텍스트")
+    win.geometry("520x260")
+    win.transient(root)
+    win.configure(bg=BG_MAIN)
+
+    tk.Label(
+        win,
+        text="복사 시 본문 5번째 단락 아래에 삽입됩니다.",
+        font=("맑은 고딕", 10, "bold"),
+        bg=BG_MAIN,
+        fg=TEXT_MUTED,
+    ).pack(pady=(12, 8))
+
+    text = tk.Text(
+        win, font=("맑은 고딕", 11), height=6, relief="flat",
+        highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=12, pady=12,
+    )
+    text.pack(fill="both", expand=True, padx=16, pady=4)
+    text.insert("1.0", blog_copy_snippets[blog_index - 1])
+
+    bottom = tk.Frame(win, bg=BG_MAIN)
+    bottom.pack(fill="x", padx=16, pady=12)
+
+    def save_snippet():
+        blog_copy_snippets[blog_index - 1] = text.get("1.0", tk.END).strip()
+        save_config()
+        win.destroy()
+
+    create_flat_button(bottom, "닫기", win.destroy, SECONDARY, SECONDARY_HOVER).pack(side="right", padx=4)
+    create_flat_button(bottom, "저장", save_snippet, ACCENT, ACCENT_HOVER).pack(side="right", padx=4)
+
+
+def copy_blog_with_snippet(blog_index: int):
+    title_var, editor = get_blog_editor_by_index(blog_index)
+    title = title_var.get().strip()
+    body = editor.get("1.0", tk.END).rstrip()
+    snippet = blog_copy_snippets[blog_index - 1].strip()
+
+    if not title and not body:
+        messagebox.showwarning("알림", f"블로그 {blog_index} 제목 또는 내용을 입력하세요.")
+        return
+
+    if not snippet:
+        messagebox.showwarning("알림", "먼저 '복사할 텍스트' 버튼에서 문구를 입력하세요.")
+        return
+
+    modified_body = insert_text_after_nth_paragraph(body, snippet, 5)
+    copy_text = combine_legacy_title_and_body(title, modified_body)
+
+    try:
+        root.clipboard_clear()
+        root.clipboard_append(copy_text)
+        root.update()
+        messagebox.showinfo("완료", f"블로그 {blog_index} 내용이 클립보드에 복사되었습니다!")
+    except Exception as e:
+        messagebox.showerror("오류", f"클립보드 복사 실패: {e}")
+
+
+def create_blog_action_row(parent, blog_index: int, test_label: str):
+    row = tk.Frame(parent, bg=BG_PANEL)
+    row.pack(fill="x", pady=(0, 10))
+    row.grid_columnconfigure(0, weight=2)
+    row.grid_columnconfigure(1, weight=1)
+    row.grid_columnconfigure(2, weight=1)
+
+    create_flat_button(
+        row, test_label, lambda idx=blog_index: start_blog_test(idx),
+        SUCCESS, SUCCESS_HOVER, font=("맑은 고딕", 9, "bold"), pady=7,
+    ).grid(row=0, column=0, sticky="ew", padx=(0, 4))
+
+    create_flat_button(
+        row, "복사할 텍스트", lambda idx=blog_index: edit_blog_copy_snippet(idx),
+        SECONDARY, SECONDARY_HOVER, font=("맑은 고딕", 9, "bold"), pady=7,
+    ).grid(row=0, column=1, sticky="ew", padx=4)
+
+    create_flat_button(
+        row, "복사", lambda idx=blog_index: copy_blog_with_snippet(idx),
+        ACCENT, ACCENT_HOVER, font=("맑은 고딕", 9, "bold"), pady=7,
+    ).grid(row=0, column=2, sticky="ew", padx=(4, 0))
+
+
 def load_txt_files(restore_selection=True):
     global current_selected_file
 
@@ -886,6 +1027,48 @@ def save_txt_file():
         set_status(f"[{file_name}] 저장 완료")
     except Exception as e:
         messagebox.showerror("오류", f"저장 실패: {e}")
+
+
+def _sanitize_file_stem(name: str) -> str:
+    invalid = '<>:"/\\|?*'
+    cleaned = "".join("_" if ch in invalid else ch for ch in name.strip())
+    return cleaned.strip(" .") or "blog"
+
+
+def _make_car_type_filename(car_type: str) -> str:
+    stem = _sanitize_file_stem(car_type)
+    date_part = time.strftime("%Y%m%d")
+    time_part = time.strftime("%H%M%S")
+    base_name = f"{stem}_{date_part}_{time_part}.txt"
+    full_path = os.path.join(get_txt_folder(), base_name)
+    if not os.path.isfile(full_path):
+        return base_name
+
+    suffix = 2
+    while True:
+        candidate = f"{stem}_{date_part}_{time_part}_{suffix}.txt"
+        if not os.path.isfile(os.path.join(get_txt_folder(), candidate)):
+            return candidate
+        suffix += 1
+
+
+def auto_save_blog_content_silent(car_type: str = "") -> str:
+    """Cursor AI 생성 후 차종+날짜 파일명으로 txt 저장합니다."""
+    global current_selected_file
+
+    file_name = _make_car_type_filename(car_type or "blog")
+
+    title1, content1, title2, content2, title3, content3 = get_title_and_content_values()
+    save_text = combine_blog_file_content(title1, content1, title2, content2, title3, content3)
+    full_path = os.path.join(get_txt_folder(), file_name)
+    with open(full_path, "w", encoding="utf-8") as f:
+        f.write(save_text)
+
+    current_selected_file = file_name
+    load_txt_files()
+    keep_listbox_selection()
+    set_status(f"[{file_name}] Cursor AI 저장 완료")
+    return file_name
 
 
 def create_txt_file():
@@ -2168,6 +2351,528 @@ def start_typing():
 
 
 # ---------------- [탭 2] 블로그 프롬프트 ----------------
+def get_cursor_api_key() -> str:
+    for name in ("CURSOR_API_KEY", "CURSOR_AI_API_KEY", "CURSOR_API"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def build_blog_ai_prompt(template_index: int, script: str) -> str:
+    return prompt_templates[template_index].format(script=script)
+
+
+def _strip_markdown_fence(text: str) -> str:
+    text = text.strip()
+    if not text.startswith("```"):
+        return text
+
+    lines = text.split("\n")
+    if lines[0].startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+    return "\n".join(lines).strip()
+
+
+def _extract_fenced_codeblocks(text: str) -> list[str]:
+    blocks = []
+    seen = set()
+    patterns = (
+        r"```(?:[\w-]+)?\s*\n(.*?)```",
+        r"```(?:[\w-]+)?\s*(.*?)```",
+    )
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, flags=re.DOTALL):
+            content = match.group(1).strip()
+            if content and content not in seen:
+                seen.add(content)
+                blocks.append(content)
+    return blocks
+
+
+BLOG_POST_LABEL_RE = re.compile(
+    r"(?:\*\*)?\s*Blog\s*Post\s*(\d+)\s*(Title|Body)\s*[:：]?\s*(?:\*\*)?",
+    flags=re.IGNORECASE,
+)
+
+
+def _normalize_section_content(raw: str) -> str:
+    raw = raw.strip()
+    if not raw:
+        return ""
+
+    blocks = _extract_fenced_codeblocks(raw)
+    if blocks:
+        if len(blocks) == 1:
+            return blocks[0]
+        return "\n".join(blocks).strip()
+
+    if raw.startswith("```"):
+        return _strip_markdown_fence(raw)
+    return raw
+
+
+def _posts_from_blog_post_labels(text: str) -> list[tuple[str, str]]:
+    """Blog Post 1 Title / Body 라벨 기준으로 구간을 잘라냅니다."""
+    matches = list(BLOG_POST_LABEL_RE.finditer(text))
+    if not matches:
+        return []
+
+    sections: dict[int, dict[str, str]] = {
+        1: {"title": "", "body": ""},
+        2: {"title": "", "body": ""},
+        3: {"title": "", "body": ""},
+    }
+
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        content = _normalize_section_content(text[start:end])
+        post_num = int(match.group(1))
+        field = match.group(2).lower()
+        if post_num in sections and field in ("title", "body"):
+            sections[post_num][field] = content
+
+    posts = []
+    for post_num in (1, 2, 3):
+        title = sections[post_num]["title"].strip()
+        body = sections[post_num]["body"].strip()
+        if title:
+            posts.append((title, body))
+    return posts
+
+
+def _posts_from_blog_post_codeblocks(text: str) -> list[tuple[str, str]]:
+    """A-VICLE 프롬프트 형식: Blog Post N Title/Body + 6개 마크다운 코드블록."""
+    label_posts = _posts_from_blog_post_labels(text)
+    if label_posts:
+        return label_posts
+
+    blocks = _extract_fenced_codeblocks(text)
+    if len(blocks) >= 6:
+        return [(blocks[0], blocks[1]), (blocks[2], blocks[3]), (blocks[4], blocks[5])]
+    if len(blocks) >= 4:
+        return [(blocks[0], blocks[1]), (blocks[2], blocks[3])]
+    if len(blocks) >= 2:
+        return [(blocks[0], blocks[1])]
+
+    return []
+
+
+def _save_cursor_debug_response(text: str) -> str:
+    os.makedirs(get_output_dir(), exist_ok=True)
+    debug_path = os.path.join(get_output_dir(), "cursor_ai_last_response.txt")
+    with open(debug_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return debug_path
+
+
+def _posts_from_storage_markers(text: str) -> list[tuple[str, str]]:
+    title1, body1, title2, body2, title3, body3 = split_blog_file_content(text)
+    return [
+        (title1.strip(), body1.strip()),
+        (title2.strip(), body2.strip()),
+        (title3.strip(), body3.strip()),
+    ]
+
+
+def _append_post(posts: list[tuple[str, str]], title: str, body: str):
+    title = title.strip()
+    body = body.strip()
+    if title:
+        posts.append((title, body))
+
+
+def _posts_from_section_split(text: str) -> list[tuple[str, str]]:
+    parts = re.split(
+        r"\n(?:={3,}|-{3,}|━{3,}|#{3,}\s*(?:원고|글|POST|Blog)\s*[123]\s*#{0,3}|"
+        r"(?:원고|글)\s*[123]\s*[:：]|\[(?:원고|글)\s*[123]\]|POST\s*[123]\s*[:：]?|Blog\s*[123]\s*[:：]?|"
+        r"(?:첫|두|세)\s*번째\s*(?:원고|글)?\s*[:：]?)\s*\n",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    posts = []
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        title, body = split_legacy_title_and_body(part)
+        _append_post(posts, title, body)
+    return posts
+
+
+def _posts_from_labeled_title_body(text: str) -> list[tuple[str, str]]:
+    chunks = re.split(r"\n(?=(?:제목|TITLE)\s*[:：])", text, flags=re.IGNORECASE)
+    posts = []
+
+    for chunk in chunks:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+
+        match = re.match(
+            r"^(?:제목|TITLE)\s*[:：]\s*(.+?)(?:\n(?:본문|내용|BODY|Body)\s*[:：]\s*)?\n([\s\S]*)$",
+            chunk,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            _append_post(posts, match.group(1), match.group(2))
+            continue
+
+        lines = chunk.split("\n")
+        if re.match(r"^(?:제목|TITLE)\s*[:：]", lines[0], flags=re.IGNORECASE):
+            title = re.sub(r"^(?:제목|TITLE)\s*[:：]\s*", "", lines[0], flags=re.IGNORECASE).strip()
+            body = "\n".join(lines[1:]).strip()
+            _append_post(posts, title, body)
+
+    return posts
+
+
+def _posts_from_heading_blocks(text: str) -> list[tuple[str, str]]:
+    parts = re.split(
+        r"\n(?=(?:\[|\【)?(?:원고|글|POST|Blog)\s*\d+[^\n]*(?:\]|\】)?\s*\n|"
+        r"(?:\[|\【)?(?:첫|두|세)\s*번째[^\n]*(?:\]|\】)?\s*\n)",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    posts = []
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        title, body = split_legacy_title_and_body(part)
+        _append_post(posts, title, body)
+    return posts
+
+
+def _posts_from_blank_line_blocks(text: str) -> list[tuple[str, str]]:
+    parts = re.split(r"\n{3,}", text.strip())
+    posts = []
+
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        title, body = split_legacy_title_and_body(part)
+        if title and len(title) <= 150:
+            _append_post(posts, title, body)
+
+    return posts
+
+
+def _choose_best_posts(text: str, expected_count: int) -> list[tuple[str, str]]:
+    codeblock_posts = [post for post in _posts_from_blog_post_codeblocks(text) if post[0].strip()]
+    if len(codeblock_posts) >= expected_count:
+        return codeblock_posts[:expected_count]
+
+    strategies = (
+        _posts_from_storage_markers,
+        _posts_from_labeled_title_body,
+        _posts_from_section_split,
+        _posts_from_heading_blocks,
+        _posts_from_blank_line_blocks,
+    )
+
+    best_posts: list[tuple[str, str]] = codeblock_posts
+    for strategy in strategies:
+        posts = [post for post in strategy(text) if post[0].strip()]
+        if len(posts) > len(best_posts):
+            best_posts = posts
+        if len(posts) >= expected_count:
+            return posts[:expected_count]
+
+    if expected_count == 1 and not best_posts:
+        title, body = split_legacy_title_and_body(text)
+        if title.strip():
+            return [(title.strip(), body.strip())]
+
+    return best_posts
+
+
+def parse_blog_posts(text: str, expected_count: int) -> list[tuple[str, str]]:
+    candidates = []
+    for candidate in (text.strip(), _strip_markdown_fence(text.strip())):
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    posts: list[tuple[str, str]] = []
+    for candidate in candidates:
+        parsed = _choose_best_posts(candidate, expected_count)
+        if len(parsed) > len(posts):
+            posts = parsed
+        if len(parsed) >= expected_count:
+            posts = parsed
+            break
+
+    result = []
+    for index in range(expected_count):
+        if index >= len(posts):
+            debug_path = _save_cursor_debug_response(text)
+            raise ValueError(
+                f"블로그 {index + 1} 원고를 추출하지 못했습니다. (응답에서 {len(posts)}개만 인식됨)\n\n"
+                "AI 응답 전문이 아래 파일에 저장되었습니다:\n"
+                f"{debug_path}\n\n"
+                "프롬프트 Output Format대로 아래 라벨이 있어야 합니다:\n"
+                "Blog Post 1 Title / Body, Blog Post 2 Title / Body, Blog Post 3 Title / Body"
+            )
+        title, body = posts[index]
+        if not title:
+            debug_path = _save_cursor_debug_response(text)
+            raise ValueError(
+                f"블로그 {index + 1} 제목을 추출하지 못했습니다.\n\n"
+                f"AI 응답 전문: {debug_path}"
+            )
+        result.append((title, body))
+    return result
+
+
+def _cursor_api_auth_header(api_key: str) -> str:
+    token = base64.b64encode(f"{api_key}:".encode("utf-8")).decode("ascii")
+    return f"Basic {token}"
+
+
+def _cursor_api_request(
+    method: str,
+    path: str,
+    api_key: str,
+    body: dict | None = None,
+    timeout: int = 120,
+) -> dict:
+    url = f"{CURSOR_API_BASE_URL}{path}"
+    headers = {
+        "Authorization": _cursor_api_auth_header(api_key),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    payload = json.dumps(body).encode("utf-8") if body is not None else None
+    request = urllib.request.Request(url, data=payload, headers=headers, method=method)
+
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8")
+        except Exception:
+            pass
+        raise RuntimeError(f"Cursor API 오류 ({e.code}): {detail or e.reason}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Cursor API 연결 실패: {e.reason}") from e
+
+
+def _fetch_run_stream_text(agent_id: str, run_id: str, api_key: str) -> str:
+    """run.result가 요약만 줄 때 stream의 assistant 전문을 수집합니다."""
+    url = f"{CURSOR_API_BASE_URL}/agents/{agent_id}/runs/{run_id}/stream"
+    headers = {
+        "Authorization": _cursor_api_auth_header(api_key),
+        "Accept": "text/event-stream",
+    }
+    request = urllib.request.Request(url, headers=headers, method="GET")
+
+    assistant_chunks: list[str] = []
+    result_text = ""
+    event_type = ""
+
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", errors="replace").rstrip("\r\n")
+                if line.startswith("event:"):
+                    event_type = line.split(":", 1)[1].strip()
+                    continue
+                if not line.startswith("data:"):
+                    continue
+
+                payload_raw = line.split(":", 1)[1].strip()
+                if not payload_raw:
+                    continue
+
+                try:
+                    payload = json.loads(payload_raw)
+                except json.JSONDecodeError:
+                    continue
+
+                if not isinstance(payload, dict):
+                    continue
+
+                if event_type == "assistant":
+                    assistant_chunks.append(str(payload.get("text", "")))
+                elif event_type == "result":
+                    result_text = str(payload.get("text", "")).strip()
+                elif event_type == "done":
+                    break
+    except Exception:
+        pass
+
+    assistant_text = "".join(assistant_chunks).strip()
+    if len(assistant_text) >= len(result_text):
+        return assistant_text
+    return result_text
+
+
+def _wait_cursor_run_result(agent_id: str, run_id: str, api_key: str) -> str:
+    for _ in range(180):
+        run_data = _cursor_api_request(
+            "GET",
+            f"/agents/{agent_id}/runs/{run_id}",
+            api_key,
+            timeout=60,
+        )
+        status = str(run_data.get("status", "")).upper()
+
+        if status in CURSOR_RUN_TERMINAL_STATUSES:
+            if status == "FINISHED":
+                response_text = str(run_data.get("result", "")).strip()
+                stream_text = _fetch_run_stream_text(agent_id, run_id, api_key)
+                if len(stream_text) > len(response_text):
+                    response_text = stream_text
+                if not response_text:
+                    raise RuntimeError("Cursor AI가 빈 응답을 반환했습니다.")
+                _save_cursor_debug_response(response_text)
+                return response_text
+            raise RuntimeError(f"Cursor AI 실행 실패 (상태: {status})")
+
+        time.sleep(5)
+
+    raise RuntimeError("Cursor AI 응답 시간이 초과되었습니다.")
+
+
+def call_cursor_ai(prompt: str, api_key: str) -> str:
+    """Cursor Cloud REST API로 블로그 글을 생성합니다 (로컬 SDK 소켓 충돌 방지)."""
+    create_response = _cursor_api_request(
+        "POST",
+        "/agents",
+        api_key,
+        {
+            "prompt": {"text": prompt},
+            "model": {"id": "composer-2.5"},
+            "autoCreatePR": False,
+        },
+        timeout=180,
+    )
+
+    agent_id = str((create_response.get("agent") or {}).get("id", "")).strip()
+    run_id = str((create_response.get("run") or {}).get("id", "")).strip()
+
+    if not agent_id:
+        agent_id = str((create_response.get("run") or {}).get("agentId", "")).strip()
+    if not run_id:
+        run_id = str((create_response.get("agent") or {}).get("latestRunId", "")).strip()
+
+    if not agent_id or not run_id:
+        raise RuntimeError("Cursor API 응답에 agent/run ID가 없습니다.")
+
+    return _wait_cursor_run_result(agent_id, run_id, api_key)
+
+
+def apply_blog_contents(blogs: list[tuple[str, str]]):
+    editors = (
+        (title_var_1, editor_1),
+        (title_var_2, editor_2),
+        (title_var_3, editor_3),
+    )
+
+    for index, (title_var, editor) in enumerate(editors):
+        if index < len(blogs):
+            title, content = blogs[index]
+            title_var.set(title)
+            editor.delete("1.0", tk.END)
+            editor.insert("1.0", content)
+        else:
+            title_var.set("")
+            editor.delete("1.0", tk.END)
+
+
+def set_cursor_ai_buttons_enabled(enabled: bool):
+    state = tk.NORMAL if enabled else tk.DISABLED
+    for btn in cursor_ai_buttons:
+        btn.config(state=state)
+
+
+def start_cursor_ai_workflow(blog_count: int):
+    global running
+
+    if running:
+        messagebox.showwarning("알림", "이미 작업이 실행 중입니다.")
+        return
+
+    script = prompt_text_input.get("1.0", tk.END).strip()
+    if not script:
+        messagebox.showerror("오류", "유튜브 대본(멘트)을 입력하세요.")
+        return
+
+    car_type = car_type_var.get().strip()
+    if not car_type:
+        messagebox.showerror("오류", "차종을 입력하세요.")
+        return
+
+    api_key = get_cursor_api_key()
+    if not api_key:
+        messagebox.showerror(
+            "오류",
+            "Cursor API 키가 없습니다.\n\n"
+            "환경 변수 CURSOR_API_KEY 를 설정해주세요.\n"
+            "(Cursor 대시보드 → Integrations → API Keys)"
+        )
+        return
+
+    set_cursor_ai_buttons_enabled(False)
+    cursor_ai_status_var.set(f"Cursor AI: 프롬프트 {blog_count}로 원고 {blog_count}개 생성 중...")
+
+    def task():
+        global running
+        running = True
+
+        try:
+            prompt = build_blog_ai_prompt(blog_count - 1, script)
+            response_text = call_cursor_ai(prompt, api_key)
+            blogs = parse_blog_posts(response_text, blog_count)
+
+            def apply_results():
+                global running
+
+                apply_blog_contents(blogs)
+                blog_run_mode_var.set(blog_count)
+                save_config()
+
+                try:
+                    saved_name = auto_save_blog_content_silent(car_type)
+                except Exception as e:
+                    running = False
+                    set_cursor_ai_buttons_enabled(True)
+                    cursor_ai_status_var.set("Cursor AI 저장 실패")
+                    messagebox.showerror("오류", f"파일 저장 실패:\n{e}")
+                    return
+
+                cursor_ai_status_var.set(
+                    f"Cursor AI 완료 ({saved_name}) - 블로그 {blog_count}개 작성란에 반영됨"
+                )
+                notebook.select(tab1)
+                running = False
+                set_cursor_ai_buttons_enabled(True)
+                messagebox.showinfo(
+                    "완료",
+                    f"원고 {blog_count}개가 블로그 작성란에 채워졌습니다.\n"
+                    f"파일 저장: {saved_name}\n\n"
+                    "네이버 자동 실행은 하지 않습니다. 필요 시 F2로 직접 실행하세요."
+                )
+
+            root.after(0, apply_results)
+        except Exception as e:
+            running = False
+            root.after(0, lambda: set_cursor_ai_buttons_enabled(True))
+            root.after(0, lambda: cursor_ai_status_var.set("Cursor AI 오류"))
+            root.after(0, lambda: messagebox.showerror("오류", f"Cursor AI 처리 실패:\n{e}"))
+
+    threading.Thread(target=task, daemon=True).start()
+
+
 def copy_prompt(index: int):
     script = prompt_text_input.get("1.0", tk.END).strip()
 
@@ -2176,7 +2881,7 @@ def copy_prompt(index: int):
         return
 
     try:
-        prompt = prompt_templates[index].format(script=script)
+        prompt = build_blog_ai_prompt(index, script)
     except KeyError as e:
         messagebox.showerror(
             "오류",
@@ -2355,7 +3060,7 @@ def _save_images_to_subfolder(
 
 
 def start_img_process():
-    car_type = img_car_type.get().strip()
+    car_type = car_type_var.get().strip()
     source_folder = img_folder_path.get().strip()
     split_count = int(img_split_count.get())
 
@@ -2644,15 +3349,7 @@ editor_wrap.add(blog2_editor_frame, weight=1)
 editor_wrap.add(blog3_editor_frame, weight=1)
 
 # 첫번째 블로그 입력창
-create_flat_button(
-    blog1_editor_frame,
-    "▶ 블로그 1 테스트 실행",
-    lambda: start_blog_test(1),
-    SUCCESS,
-    SUCCESS_HOVER,
-    font=("맑은 고딕", 10, "bold"),
-    pady=8,
-).pack(fill="x", pady=(0, 10))
+create_blog_action_row(blog1_editor_frame, 1, "▶ 블로그 1 테스트")
 
 tk.Label(blog1_editor_frame, text="📰 첫번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_1 = tk.StringVar()
@@ -2664,15 +3361,7 @@ editor_1 = tk.Text(blog1_editor_frame, font=("맑은 고딕", 11), undo=True, re
 editor_1.pack(fill="both", expand=True)
 
 # 두번째 블로그 입력창
-create_flat_button(
-    blog2_editor_frame,
-    "▶ 블로그 2 테스트 실행",
-    lambda: start_blog_test(2),
-    SUCCESS,
-    SUCCESS_HOVER,
-    font=("맑은 고딕", 10, "bold"),
-    pady=8,
-).pack(fill="x", pady=(0, 10))
+create_blog_action_row(blog2_editor_frame, 2, "▶ 블로그 2 테스트")
 
 tk.Label(blog2_editor_frame, text="📰 두번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_2 = tk.StringVar()
@@ -2684,15 +3373,7 @@ editor_2 = tk.Text(blog2_editor_frame, font=("맑은 고딕", 11), undo=True, re
 editor_2.pack(fill="both", expand=True)
 
 # 세번째 블로그 입력창
-create_flat_button(
-    blog3_editor_frame,
-    "▶ 블로그 3 테스트 실행 (Edge)",
-    lambda: start_blog_test(3),
-    SUCCESS,
-    SUCCESS_HOVER,
-    font=("맑은 고딕", 10, "bold"),
-    pady=8,
-).pack(fill="x", pady=(0, 10))
+create_blog_action_row(blog3_editor_frame, 3, "▶ 블로그 3 테스트")
 
 tk.Label(blog3_editor_frame, text="📰 세번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_3 = tk.StringVar()
@@ -2738,13 +3419,110 @@ tk.Label(
 tab2 = tk.Frame(notebook, bg=BG_MAIN)
 notebook.add(tab2, text="  블로그 AI 프롬프트  ")
 
-tk.Label(tab2, text="유튜브 대본(멘트) 입력", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(20, 5))
+tab2_scroll_container = tk.Frame(tab2, bg=BG_MAIN)
+tab2_scroll_container.pack(fill="both", expand=True)
 
-prompt_text_input = tk.Text(tab2, font=("맑은 고딕", 11), height=16, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=15, pady=15)
-prompt_text_input.pack(fill="both", expand=True, padx=30, pady=5)
+tab2_canvas = tk.Canvas(tab2_scroll_container, bg=BG_MAIN, highlightthickness=0)
+tab2_scrollbar = ttk.Scrollbar(tab2_scroll_container, orient="vertical", command=tab2_canvas.yview)
+tab2_f = tk.Frame(tab2_canvas, bg=BG_MAIN)
 
-prompt_manage_wrap = tk.Frame(tab2, bg=BG_MAIN)
-prompt_manage_wrap.pack(fill="both", padx=30, pady=20)
+tab2_f.bind(
+    "<Configure>",
+    lambda e: tab2_canvas.configure(scrollregion=tab2_canvas.bbox("all"))
+)
+tab2_canvas_window = tab2_canvas.create_window((0, 0), window=tab2_f, anchor="nw")
+
+def _on_tab2_canvas_configure(event):
+    tab2_canvas.itemconfigure(tab2_canvas_window, width=event.width)
+
+tab2_canvas.bind("<Configure>", _on_tab2_canvas_configure)
+tab2_canvas.configure(yscrollcommand=tab2_scrollbar.set)
+
+tab2_canvas.pack(side="left", fill="both", expand=True)
+tab2_scrollbar.pack(side="right", fill="y")
+
+def _bind_tab2_scroll(event=None):
+    tab2_canvas.bind_all("<MouseWheel>", _on_tab2_mousewheel)
+    tab2_canvas.bind_all("<Button-4>", _on_tab2_mousewheel)
+    tab2_canvas.bind_all("<Button-5>", _on_tab2_mousewheel)
+
+def _unbind_tab2_scroll(event=None):
+    tab2_canvas.unbind_all("<MouseWheel>")
+    tab2_canvas.unbind_all("<Button-4>")
+    tab2_canvas.unbind_all("<Button-5>")
+
+def _on_tab2_mousewheel(event):
+    try:
+        if hasattr(event, "delta") and event.delta:
+            tab2_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        elif getattr(event, "num", None) == 4:
+            tab2_canvas.yview_scroll(-3, "units")
+        elif getattr(event, "num", None) == 5:
+            tab2_canvas.yview_scroll(3, "units")
+    except Exception:
+        pass
+
+tab2_canvas.bind("<Enter>", _bind_tab2_scroll)
+tab2_canvas.bind("<Leave>", _unbind_tab2_scroll)
+tab2_f.bind("<Enter>", _bind_tab2_scroll)
+tab2_f.bind("<Leave>", _unbind_tab2_scroll)
+
+tk.Label(tab2_f, text="유튜브 대본(멘트) 입력", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(20, 5))
+
+prompt_text_input = tk.Text(tab2_f, font=("맑은 고딕", 11), height=12, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=15, pady=15)
+prompt_text_input.pack(fill="x", padx=30, pady=5)
+
+car_type_var = tk.StringVar()
+car_type_frame = tk.Frame(tab2_f, bg=BG_MAIN)
+car_type_frame.pack(fill="x", padx=30, pady=(8, 0))
+tk.Label(car_type_frame, text="차종 입력 (파일명 저장용)", font=("맑은 고딕", 11, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(side="left")
+car_type_entry = tk.Entry(
+    car_type_frame, textvariable=car_type_var, font=("맑은 고딕", 11), width=30,
+    relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG,
+)
+car_type_entry.pack(side="left", padx=(12, 0), ipady=6)
+car_type_entry.bind("<FocusOut>", lambda event: save_config())
+
+cursor_ai_status_var = tk.StringVar()
+
+cursor_ai_wrap = ttk.LabelFrame(tab2_f, text="  Cursor AI 자동 작성  ", padding=(12, 12))
+cursor_ai_wrap.pack(fill="x", padx=30, pady=(10, 5))
+
+cursor_ai_btn_row = tk.Frame(cursor_ai_wrap, bg=BG_PANEL)
+cursor_ai_btn_row.pack(fill="x")
+
+for blog_count, label in ((1, "🤖 Cursor AI 1개"), (2, "🤖 Cursor AI 2개"), (3, "🤖 Cursor AI 3개")):
+    btn = create_flat_button(
+        cursor_ai_btn_row,
+        label,
+        lambda count=blog_count: start_cursor_ai_workflow(count),
+        ACCENT if blog_count == 1 else SUCCESS if blog_count == 2 else WARNING,
+        ACCENT_HOVER if blog_count == 1 else SUCCESS_HOVER if blog_count == 2 else WARNING_HOVER,
+        font=("맑은 고딕", 11, "bold"),
+        pady=10,
+    )
+    btn.pack(side="left", fill="x", expand=True, padx=(0 if blog_count == 1 else 4, 0 if blog_count == 3 else 4))
+    cursor_ai_buttons.append(btn)
+
+if get_cursor_api_key():
+    cursor_key_text = "✅ Cursor API 키 감지됨 (Cloud API)"
+    cursor_key_color = SUCCESS
+else:
+    cursor_key_text = "❌ CURSOR_API_KEY 환경 변수 없음"
+    cursor_key_color = DANGER
+
+tk.Label(
+    cursor_ai_wrap,
+    text="대본+차종 입력 → 버튼 클릭 → 해당 프롬프트+멘트를 API에 그대로 전달 → 작성란 반영 → 차종_날짜.txt 저장",
+    font=("맑은 고딕", 9),
+    bg=BG_PANEL,
+    fg=TEXT_MUTED,
+).pack(pady=(8, 4))
+tk.Label(cursor_ai_wrap, text=cursor_key_text, fg=cursor_key_color, bg=BG_PANEL, font=("맑은 고딕", 9, "bold")).pack()
+tk.Label(tab2_f, textvariable=cursor_ai_status_var, fg=WARNING, bg=BG_MAIN, font=("맑은 고딕", 10, "bold")).pack(pady=(4, 0))
+
+prompt_manage_wrap = tk.Frame(tab2_f, bg=BG_MAIN)
+prompt_manage_wrap.pack(fill="x", padx=30, pady=(20, 30))
 
 for i in range(4):
     row = ttk.LabelFrame(prompt_manage_wrap, text=f"  프롬프트 {i + 1}  ", padding=(12, 12))
@@ -2768,7 +3546,6 @@ notebook.add(tab3, text="  이미지 일괄 변환  ")
 
 img_folder_path = tk.StringVar()
 img_split_count = tk.IntVar(value=2)
-img_car_type = tk.StringVar()
 img_status_var = tk.StringVar()
 
 init_app_storage()
@@ -2809,7 +3586,7 @@ tk.Label(
     text="키워드는 자동 조합됩니다 (순정연동, 시공, 가격, 라이트, 튜닝, kc인증, 스피커, 에이비클, 시공후기, 아크릴, 전용어플, 전문점, 광주, 전주, 순천, 목포, 군산, 여수, 익산, 광양)",
     font=("맑은 고딕", 9), bg=BG_MAIN, fg=TEXT_MUTED, wraplength=720, justify="center",
 ).pack(pady=(0, 8))
-img_entry = tk.Entry(tab3, textvariable=img_car_type, font=("맑은 고딕", 11), width=50, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center")
+img_entry = tk.Entry(tab3, textvariable=car_type_var, font=("맑은 고딕", 11), width=50, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center")
 img_entry.pack(pady=5, ipady=8)
 img_entry.bind("<FocusOut>", lambda event: save_config())
 
