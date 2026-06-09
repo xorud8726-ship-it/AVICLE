@@ -156,18 +156,6 @@ prompt_name_buttons = []
 cursor_ai_buttons = []
 blog_copy_snippets = ["", "", ""]
 
-DEFAULT_BLOG_POLISH_PROMPT = """Do not modify keywords or SEO.
-Keep all questions and answers within the manuscript.
-Refine only the writing and improve natural flow.
-
-Return ONLY the refined manuscript body text.
-Do not include a title.
-Do not wrap the answer in markdown code blocks.
-
-[Manuscript]
-{content}
-"""
-
 
 # ---------------- 리소스 경로 ----------------
 def get_base_dir():
@@ -857,7 +845,7 @@ def edit_blog_copy_snippet(blog_index: int):
 
     tk.Label(
         win,
-        text="복사 시 본문 맨 아래 단락에 삽입됩니다. (제목은 복사되지 않음)",
+        text="다듬기 프롬프트입니다. 복사·자동 다듬기 시 본문 맨 아래에 함께 전달됩니다. (제목은 복사되지 않음)",
         font=("맑은 고딕", 10, "bold"),
         bg=BG_MAIN,
         fg=TEXT_MUTED,
@@ -934,10 +922,6 @@ def _run_on_main_thread(func, timeout: float = 60):
     return result_box.get("value")
 
 
-def build_polish_prompt(content: str) -> str:
-    return DEFAULT_BLOG_POLISH_PROMPT.format(content=content)
-
-
 def parse_polished_body(text: str) -> str:
     polished = _strip_markdown_fence(text).strip()
     if not polished:
@@ -952,7 +936,7 @@ def set_blog_body_content(blog_index: int, body: str):
 
 
 def run_full_auto_pipeline(blog_count: int, car_type: str, api_key: str):
-    """Cursor AI 생성 → 복사 텍스트 포함 다듬기 → F2 자동 실행."""
+    """Cursor AI 생성 → 복사 버튼과 동일(본문+프롬프트)으로 다듬기 → F2 자동 실행."""
     for blog_index in range(1, blog_count + 1):
         root.after(
             0,
@@ -965,7 +949,7 @@ def run_full_auto_pipeline(blog_count: int, car_type: str, api_key: str):
             return build_blog_copy_text(idx, body)
 
         copy_text = _run_on_main_thread(read_copy_text)
-        polished_response = call_cursor_ai(build_polish_prompt(copy_text), api_key)
+        polished_response = call_cursor_ai(copy_text, api_key)
         polished_body = parse_polished_body(polished_response)
 
         _run_on_main_thread(lambda idx=blog_index, body=polished_body: set_blog_body_content(idx, body))
@@ -2898,7 +2882,7 @@ def start_cursor_ai_workflow(blog_count: int):
             if not blog_copy_snippets[blog_index - 1].strip():
                 messagebox.showerror(
                     "오류",
-                    f"블로그 {blog_index} '복사할 텍스트'를 먼저 입력하세요.\n"
+                    f"블로그 {blog_index} '복사할 텍스트'(다듬기 프롬프트)를 먼저 입력하세요.\n"
                     "(자동 다듬기에 필요합니다)",
                 )
                 return
