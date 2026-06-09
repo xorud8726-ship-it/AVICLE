@@ -845,7 +845,7 @@ def edit_blog_copy_snippet(blog_index: int):
 
     tk.Label(
         win,
-        text="다듬기 프롬프트입니다. 복사·자동 다듬기 시 본문 맨 아래에 함께 전달됩니다. (제목은 복사되지 않음)",
+        text="복사 시 본문 맨 아래 단락에 삽입됩니다. (제목은 복사되지 않음)",
         font=("맑은 고딕", 10, "bold"),
         bg=BG_MAIN,
         fg=TEXT_MUTED,
@@ -870,24 +870,20 @@ def edit_blog_copy_snippet(blog_index: int):
     create_flat_button(bottom, "저장", save_snippet, ACCENT, ACCENT_HOVER).pack(side="right", padx=4)
 
 
-def build_blog_copy_text(blog_index: int, body: str) -> str:
-    snippet = blog_copy_snippets[blog_index - 1].strip()
-    if not body.strip():
-        raise ValueError(f"블로그 {blog_index} 내용을 입력하세요.")
-    if not snippet:
-        raise ValueError(f"블로그 {blog_index} '복사할 텍스트'를 먼저 입력하세요.")
-    return append_text_to_body_bottom(body, snippet)
-
-
 def copy_blog_with_snippet(blog_index: int):
     _, editor = get_blog_editor_by_index(blog_index)
     body = editor.get("1.0", tk.END).rstrip()
+    snippet = blog_copy_snippets[blog_index - 1].strip()
 
-    try:
-        copy_text = build_blog_copy_text(blog_index, body)
-    except ValueError as e:
-        messagebox.showwarning("알림", str(e))
+    if not body:
+        messagebox.showwarning("알림", f"블로그 {blog_index} 내용을 입력하세요.")
         return
+
+    if not snippet:
+        messagebox.showwarning("알림", "먼저 '복사할 텍스트' 버튼에서 문구를 입력하세요.")
+        return
+
+    copy_text = append_text_to_body_bottom(body, snippet)
 
     try:
         root.clipboard_clear()
@@ -896,83 +892,6 @@ def copy_blog_with_snippet(blog_index: int):
         messagebox.showinfo("완료", f"블로그 {blog_index} 본문이 클립보드에 복사되었습니다!")
     except Exception as e:
         messagebox.showerror("오류", f"클립보드 복사 실패: {e}")
-
-
-def _run_on_main_thread(func, timeout: float = 60):
-    if threading.current_thread() is threading.main_thread():
-        return func()
-
-    result_box: dict = {}
-    error_box: dict = {}
-    done = threading.Event()
-
-    def wrapper():
-        try:
-            result_box["value"] = func()
-        except Exception as exc:
-            error_box["error"] = exc
-        finally:
-            done.set()
-
-    root.after(0, wrapper)
-    if not done.wait(timeout):
-        raise TimeoutError("UI 작업 시간이 초과되었습니다.")
-    if "error" in error_box:
-        raise error_box["error"]
-    return result_box.get("value")
-
-
-def parse_polished_body(text: str) -> str:
-    polished = _strip_markdown_fence(text).strip()
-    if not polished:
-        raise ValueError("다듬기 결과가 비어 있습니다.")
-    return polished
-
-
-def set_blog_body_content(blog_index: int, body: str):
-    _, editor = get_blog_editor_by_index(blog_index)
-    editor.delete("1.0", tk.END)
-    editor.insert("1.0", body)
-
-
-def run_full_auto_pipeline(blog_count: int, car_type: str, api_key: str):
-    """Cursor AI 생성 → 복사 버튼과 동일(본문+프롬프트)으로 다듬기 → F2 자동 실행."""
-    for blog_index in range(1, blog_count + 1):
-        root.after(
-            0,
-            lambda idx=blog_index: cursor_ai_status_var.set(f"블로그 {idx} 다듬기 중... ({idx}/{blog_count})"),
-        )
-
-        def read_copy_text(idx=blog_index):
-            _, editor = get_blog_editor_by_index(idx)
-            body = editor.get("1.0", tk.END).rstrip()
-            return build_blog_copy_text(idx, body)
-
-        copy_text = _run_on_main_thread(read_copy_text)
-        polished_response = call_cursor_ai(copy_text, api_key)
-        polished_body = parse_polished_body(polished_response)
-
-        _run_on_main_thread(lambda idx=blog_index, body=polished_body: set_blog_body_content(idx, body))
-
-    def finalize():
-        global running
-
-        try:
-            saved_name = auto_save_blog_content_silent(car_type)
-        except Exception as e:
-            running = False
-            set_cursor_ai_buttons_enabled(True)
-            cursor_ai_status_var.set("자동화 저장 실패")
-            messagebox.showerror("오류", f"파일 저장 실패:\n{e}")
-            return
-
-        cursor_ai_status_var.set(f"자동화 완료 ({saved_name}) - 3초 후 F2 자동 타이핑...")
-        notebook.select(tab1)
-        running = False
-        set_cursor_ai_buttons_enabled(True)
-        start_typing()
-
-    root.after(0, finalize)
 
 
 def create_blog_action_row(parent, blog_index: int, test_label: str):
@@ -2877,16 +2796,6 @@ def start_cursor_ai_workflow(blog_count: int):
         )
         return
 
-    if blog_count == 3:
-        for blog_index in range(1, 4):
-            if not blog_copy_snippets[blog_index - 1].strip():
-                messagebox.showerror(
-                    "오류",
-                    f"블로그 {blog_index} '복사할 텍스트'(다듬기 프롬프트)를 먼저 입력하세요.\n"
-                    "(자동 다듬기에 필요합니다)",
-                )
-                return
-
     set_cursor_ai_buttons_enabled(False)
     cursor_ai_status_var.set(f"Cursor AI: 프롬프트 {blog_count}로 원고 {blog_count}개 생성 중...")
 
@@ -2916,33 +2825,16 @@ def start_cursor_ai_workflow(blog_count: int):
                     return
 
                 cursor_ai_status_var.set(
-                    f"원고 생성 완료 ({saved_name}) - 블로그 {blog_count}개 반영됨"
+                    f"Cursor AI 완료 ({saved_name}) - 블로그 {blog_count}개 작성란에 반영됨"
                 )
                 notebook.select(tab1)
-
-                if blog_count == 3:
-                    cursor_ai_status_var.set("자동 다듬기 시작...")
-
-                    def polish_task():
-                        global running
-                        try:
-                            run_full_auto_pipeline(blog_count, car_type, api_key)
-                        except Exception as exc:
-                            running = False
-                            root.after(0, lambda: set_cursor_ai_buttons_enabled(True))
-                            root.after(0, lambda: cursor_ai_status_var.set("자동 다듬기 오류"))
-                            root.after(0, lambda: messagebox.showerror("오류", f"자동 다듬기 실패:\n{exc}"))
-
-                    threading.Thread(target=polish_task, daemon=True).start()
-                    return
-
                 running = False
                 set_cursor_ai_buttons_enabled(True)
                 messagebox.showinfo(
                     "완료",
                     f"원고 {blog_count}개가 블로그 작성란에 채워졌습니다.\n"
                     f"파일 저장: {saved_name}\n\n"
-                    "필요 시 F2로 직접 실행하세요."
+                    "네이버 자동 실행은 하지 않습니다. 필요 시 F2로 직접 실행하세요."
                 )
 
             root.after(0, apply_results)
