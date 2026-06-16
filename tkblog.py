@@ -39,7 +39,6 @@ except Exception as e:
 CURSOR_API_BASE_URL = "https://api.cursor.com/v1"
 CURSOR_RUN_TERMINAL_STATUSES = frozenset({"FINISHED", "ERROR", "CANCELLED", "EXPIRED"})
 
-
 # ---------------- 전역 설정 및 변수 ----------------
 CONFIG_FILE = "config.json"
 SUPPORTED_EXTENSIONS = (
@@ -156,7 +155,6 @@ prompt_name_buttons = []
 cursor_ai_buttons = []
 blog_copy_snippets = ["", "", ""]
 
-
 # ---------------- 리소스 경로 ----------------
 def get_base_dir():
     if getattr(sys, "frozen", False):
@@ -176,7 +174,6 @@ def get_base_dir():
             return parent_dir
 
     return script_dir
-
 
 BASE_DIR = get_base_dir()
 
@@ -204,26 +201,20 @@ ASSET_FILENAMES = (
     "66.PNG",
 )
 
-
 def get_posts_dir():
     return os.path.join(BASE_DIR, POSTS_DIR_NAME)
-
 
 def get_config_dir():
     return os.path.join(BASE_DIR, CONFIG_DIR_NAME)
 
-
 def get_assets_dir():
     return os.path.join(BASE_DIR, ASSETS_DIR_NAME)
-
 
 def get_output_dir():
     return os.path.join(BASE_DIR, OUTPUT_DIR_NAME)
 
-
 def get_data_dir():
     return os.path.join(BASE_DIR, DATA_DIR_NAME)
-
 
 def ensure_app_directories():
     for folder_name in (
@@ -234,7 +225,6 @@ def ensure_app_directories():
         DATA_DIR_NAME,
     ):
         os.makedirs(os.path.join(BASE_DIR, folder_name), exist_ok=True)
-
 
 def _safe_move_file(source_path: str, target_dir: str) -> None:
     if not os.path.isfile(source_path):
@@ -251,7 +241,6 @@ def _safe_move_file(source_path: str, target_dir: str) -> None:
 
     os.makedirs(target_dir, exist_ok=True)
     os.replace(source_path, target_path)
-
 
 def resolve_asset_path(file_name: str) -> str:
     name_candidates = [file_name]
@@ -278,7 +267,6 @@ def resolve_asset_path(file_name: str) -> str:
 
     return os.path.join(get_assets_dir(), deduped_names[0])
 
-
 def iter_txt_folders():
     folders = []
     posts_dir = get_posts_dir()
@@ -288,14 +276,12 @@ def iter_txt_folders():
         folders.append(BASE_DIR)
     return folders
 
-
 def resolve_txt_path(file_name: str) -> str:
     for folder in iter_txt_folders():
         path = os.path.join(folder, file_name)
         if os.path.isfile(path):
             return path
     return os.path.join(get_posts_dir(), file_name)
-
 
 def resolve_config_path(for_write: bool = False) -> str:
     if for_write:
@@ -309,7 +295,6 @@ def resolve_config_path(for_write: bool = False) -> str:
         if os.path.isfile(path):
             return path
     return candidates[0]
-
 
 def bind_template_paths():
     global LOGIN_TEMPLATE, HELP_HEADER_TEMPLATE, SE_TEMPLATE
@@ -330,7 +315,6 @@ def bind_template_paths():
     CHECK_TEMPLATE = resolve_asset_path("check.png")
     QUOTE_TEMPLATE = resolve_asset_path("66.PNG")
 
-
 def ensure_launcher_secrets():
     """런처가 exe 옆 secret.key 를 찾는 경우를 위해 루트에도 유지합니다."""
     root_key = os.path.join(BASE_DIR, "secret.key")
@@ -342,13 +326,11 @@ def ensure_launcher_secrets():
         except Exception:
             pass
 
-
 def init_app_storage():
     ensure_app_directories()
     migrate_legacy_files()
     ensure_launcher_secrets()
     bind_template_paths()
-
 
 def migrate_legacy_files():
     ensure_app_directories()
@@ -399,7 +381,6 @@ def migrate_legacy_files():
             marker_file.write("ok")
     except Exception as exc:
         print("legacy migration warning:", exc)
-
 
 CHROME_CANDIDATES = (
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
@@ -465,9 +446,7 @@ DEFAULT_SPEED_CPM = 450
 SPECIAL_LINK_TEXT = "견적상담하기"
 QUOTE_MARKER = "-인용구-"
 
-
 kb_controller = Controller()
-
 
 # ---------------- 입력 유틸 ----------------
 user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -477,6 +456,8 @@ VK_CAPITAL = 0x14
 VK_HANGUL = 0x15
 KEYEVENTF_KEYUP = 0x0002
 SW_RESTORE = 9
+SW_NORMAL = 1
+SW_MINIMIZE = 6
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 ASFW_ANY = -1
 
@@ -485,13 +466,11 @@ BROWSER_PROCESS_NAMES = {
     "edge": "msedge.exe",
 }
 
-
 def is_capslock_on() -> bool:
     try:
         return bool(user32.GetKeyState(VK_CAPITAL) & 0x0001)
     except Exception:
         return False
-
 
 def press_virtual_key(vk_code: int) -> None:
     try:
@@ -502,20 +481,16 @@ def press_virtual_key(vk_code: int) -> None:
     except Exception:
         pass
 
-
 def ensure_capslock_off() -> None:
     if is_capslock_on():
         press_virtual_key(VK_CAPITAL)
         time.sleep(0.05)
 
-
 def text_needs_hangul_mode(text: str) -> bool:
     return any("가" <= ch <= "힣" or "ㄱ" <= ch <= "ㅎ" or "ㅏ" <= ch <= "ㅣ" for ch in text)
 
-
 def text_needs_english_mode(text: str) -> bool:
     return any(("a" <= ch.lower() <= "z") for ch in text)
-
 
 def ensure_input_mode_for_text(text: str) -> None:
     ensure_capslock_off()
@@ -530,7 +505,6 @@ def ensure_input_mode_for_text(text: str) -> None:
                 press_virtual_key(VK_HANGUL)
     except Exception:
         pass
-
 
 def paste_text_safely(text: str) -> None:
     ensure_input_mode_for_text(text)
@@ -551,7 +525,6 @@ def paste_text_safely(text: str) -> None:
             except Exception:
                 pass
 
-
 def clear_current_input_field() -> None:
     ensure_capslock_off()
     pyautogui.hotkey("ctrl", "a")
@@ -559,10 +532,8 @@ def clear_current_input_field() -> None:
     pyautogui.press("backspace")
     time.sleep(0.08)
 
-
 # ---------------- [공통] 설정 저장/불러오기 ----------------
 DEFAULT_WINDOW_GEOMETRY = "1500x960"
-
 
 def _read_config_file_data():
     config_path = resolve_config_path()
@@ -574,7 +545,6 @@ def _read_config_file_data():
         return data if isinstance(data, dict) else {}
     except Exception:
         return {}
-
 
 def capture_window_geometry() -> Optional[str]:
     try:
@@ -589,7 +559,6 @@ def capture_window_geometry() -> Optional[str]:
         pass
     return None
 
-
 def apply_window_geometry(geometry: str) -> None:
     if not geometry or not isinstance(geometry, str):
         return
@@ -598,7 +567,6 @@ def apply_window_geometry(geometry: str) -> None:
         root.update_idletasks()
     except Exception:
         pass
-
 
 def _build_config_data():
     return {
@@ -624,7 +592,6 @@ def _build_config_data():
         "speed_cpm": int(speed_scale.get()),
     }
 
-
 def save_config(save_window_geometry: bool = False):
     existing = _read_config_file_data()
     data = _build_config_data()
@@ -643,11 +610,9 @@ def save_config(save_window_geometry: bool = False):
     except Exception:
         pass
 
-
 def on_root_close():
     save_config(save_window_geometry=True)
     root.destroy()
-
 
 def load_config():
     global prompt_templates, prompt_button_names, blog_copy_snippets
@@ -718,7 +683,6 @@ def load_config():
     except Exception:
         pass
 
-
 def update_speed_label(value=None):
     try:
         current_value = int(float(speed_scale.get()))
@@ -726,18 +690,15 @@ def update_speed_label(value=None):
         current_value = DEFAULT_SPEED_CPM
     speed_value_var.set(f"현재 타수: {current_value} CPM")
 
-
 # ---------------- [공통] 상태 업데이트 ----------------
 def set_status(text: str):
     status_var.set(text)
     root.update_idletasks()
 
-
 # ---------------- [탭 1] 파일 관리 및 자동 타이핑 ----------------
 def get_txt_folder():
     os.makedirs(get_posts_dir(), exist_ok=True)
     return get_posts_dir()
-
 
 def split_blog_file_content(raw_text: str):
     raw_text = raw_text.replace("\r\n", "\n")
@@ -767,7 +728,6 @@ def split_blog_file_content(raw_text: str):
     title1, body1 = split_legacy_title_and_body(raw_text)
     return title1, body1, "", "", title3, body3
 
-
 def split_legacy_title_and_body(raw_text: str):
     raw_text = raw_text.replace("\r\n", "\n")
     lines = raw_text.split("\n")
@@ -778,7 +738,6 @@ def split_legacy_title_and_body(raw_text: str):
     title = lines[0].strip()
     body = "\n".join(lines[1:]).lstrip("\n")
     return title, body
-
 
 def combine_blog_file_content(title1: str, body1: str, title2: str, body2: str, title3: str = "", body3: str = ""):
     primary = combine_legacy_title_and_body(title1, body1)
@@ -795,7 +754,6 @@ def combine_blog_file_content(title1: str, body1: str, title2: str, body2: str, 
 
     return primary
 
-
 def combine_legacy_title_and_body(title: str, body: str):
     title = title.rstrip()
     body = body.rstrip()
@@ -805,7 +763,6 @@ def combine_legacy_title_and_body(title: str, body: str):
     if title:
         return title
     return body
-
 
 def get_title_and_content_values():
     return (
@@ -817,7 +774,6 @@ def get_title_and_content_values():
         editor_3.get("1.0", tk.END).rstrip(),
     )
 
-
 def get_blog_editor_by_index(blog_index: int):
     mapping = {
         1: (title_var_1, editor_1),
@@ -826,7 +782,6 @@ def get_blog_editor_by_index(blog_index: int):
     }
     return mapping[blog_index]
 
-
 def append_text_to_body_bottom(body: str, insert_text: str) -> str:
     insert_text = insert_text.strip()
     if not insert_text:
@@ -834,7 +789,6 @@ def append_text_to_body_bottom(body: str, insert_text: str) -> str:
     if body.strip():
         return f"{body.rstrip()}\n\n{insert_text}"
     return insert_text
-
 
 def edit_blog_copy_snippet(blog_index: int):
     win = tk.Toplevel(root)
@@ -869,7 +823,6 @@ def edit_blog_copy_snippet(blog_index: int):
     create_flat_button(bottom, "닫기", win.destroy, SECONDARY, SECONDARY_HOVER).pack(side="right", padx=4)
     create_flat_button(bottom, "저장", save_snippet, ACCENT, ACCENT_HOVER).pack(side="right", padx=4)
 
-
 def copy_blog_with_snippet(blog_index: int):
     _, editor = get_blog_editor_by_index(blog_index)
     body = editor.get("1.0", tk.END).rstrip()
@@ -893,7 +846,6 @@ def copy_blog_with_snippet(blog_index: int):
     except Exception as e:
         messagebox.showerror("오류", f"클립보드 복사 실패: {e}")
 
-
 def create_blog_action_row(parent, blog_index: int, test_label: str):
     row = tk.Frame(parent, bg=BG_PANEL)
     row.pack(fill="x", pady=(0, 10))
@@ -915,7 +867,6 @@ def create_blog_action_row(parent, blog_index: int, test_label: str):
         row, "복사", lambda idx=blog_index: copy_blog_with_snippet(idx),
         ACCENT, ACCENT_HOVER, font=("맑은 고딕", 9, "bold"), pady=7,
     ).grid(row=0, column=2, sticky="ew", padx=(4, 0))
-
 
 def load_txt_files(restore_selection=True):
     global current_selected_file
@@ -948,7 +899,6 @@ def load_txt_files(restore_selection=True):
         listbox.activate(selected_index)
         listbox.see(selected_index)
 
-
 def keep_listbox_selection():
     global current_selected_file
 
@@ -960,7 +910,6 @@ def keep_listbox_selection():
             listbox.selection_set(idx)
             listbox.activate(idx)
             listbox.see(idx)
-
 
 def save_txt_file():
     global current_selected_file
@@ -1002,12 +951,10 @@ def save_txt_file():
     except Exception as e:
         messagebox.showerror("오류", f"저장 실패: {e}")
 
-
 def _sanitize_file_stem(name: str) -> str:
     invalid = '<>:"/\\|?*'
     cleaned = "".join("_" if ch in invalid else ch for ch in name.strip())
     return cleaned.strip(" .") or "blog"
-
 
 def _make_car_type_filename(car_type: str) -> str:
     stem = _sanitize_file_stem(car_type)
@@ -1024,7 +971,6 @@ def _make_car_type_filename(car_type: str) -> str:
         if not os.path.isfile(os.path.join(get_txt_folder(), candidate)):
             return candidate
         suffix += 1
-
 
 def auto_save_blog_content_silent(car_type: str = "") -> str:
     """Cursor AI 생성 후 차종+날짜 파일명으로 txt 저장합니다."""
@@ -1043,7 +989,6 @@ def auto_save_blog_content_silent(car_type: str = "") -> str:
     keep_listbox_selection()
     set_status(f"[{file_name}] Cursor AI 저장 완료")
     return file_name
-
 
 def create_txt_file():
     global current_selected_file
@@ -1073,7 +1018,6 @@ def create_txt_file():
         set_status(f"새 파일 생성: {full_name}")
     except Exception as e:
         messagebox.showerror("오류", f"파일 생성 실패: {e}")
-
 
 def rename_txt_file():
     global current_selected_file
@@ -1117,7 +1061,6 @@ def rename_txt_file():
     except Exception as e:
         messagebox.showerror("오류", f"이름 변경 실패: {e}")
 
-
 def on_select_txt(event=None):
     global current_selected_file
 
@@ -1158,10 +1101,8 @@ def on_select_txt(event=None):
     except Exception as e:
         messagebox.showerror("오류", f"파일 열기 실패: {e}")
 
-
 def on_listbox_focus_out(event=None):
     root.after(10, keep_listbox_selection)
-
 
 def get_phone_number(blog_index: int) -> str:
     if blog_index == 2:
@@ -1172,10 +1113,8 @@ def get_phone_number(blog_index: int) -> str:
         value = phone_number_var_1.get().strip()
     return value or DEFAULT_PHONE_NUMBER
 
-
 def get_tel_link(blog_index: int) -> str:
     return f"TEL:{get_phone_number(blog_index)}"
-
 
 def select_recent_typed_text(char_count: int) -> None:
     if char_count <= 0:
@@ -1193,7 +1132,6 @@ def select_recent_typed_text(char_count: int) -> None:
             time.sleep(0.08)
 
     time.sleep(0.2)
-
 
 def run_post_estimate_location_action(blog_index: int = 1) -> None:
     set_status("견적상담하기 후 지도/주소 작업 중...")
@@ -1232,7 +1170,6 @@ def run_post_estimate_location_action(blog_index: int = 1) -> None:
     pyautogui.press("enter", presses=2, interval=0.15)
     time.sleep(0.3)
 
-
 def run_estimate_link_action(blog_index: int = 1) -> None:
     set_status("견적상담하기 링크 작업 중...")
 
@@ -1255,13 +1192,11 @@ def run_estimate_link_action(blog_index: int = 1) -> None:
 
     run_post_estimate_location_action(blog_index)
 
-
 def extract_quote_text(block_text: str) -> str:
     value = block_text.strip()
     if value.startswith('"') and value.endswith('"') and len(value) >= 2:
         value = value[1:-1].strip()
     return value
-
 
 def run_quote_block_action(quote_text: str) -> None:
     set_status("인용구 입력 작업 중...")
@@ -1274,7 +1209,6 @@ def run_quote_block_action(quote_text: str) -> None:
     time.sleep(0.2)
     pyautogui.press("down", presses=2)
     time.sleep(0.2)
-
 
 def human_like_typing(text: str, blog_index: int = 1):
     global stop_flag
@@ -1289,10 +1223,18 @@ def human_like_typing(text: str, blog_index: int = 1):
 
     index = 0
     text_length = len(text)
+    chars_since_focus_check = 0
+    focus_check_interval = 80
 
     while index < text_length:
         if stop_flag:
             break
+
+        chars_since_focus_check += 1
+        if chars_since_focus_check >= focus_check_interval:
+            activate_browser_window()
+            time.sleep(0.15)
+            chars_since_focus_check = 0
 
         if text.startswith(SPECIAL_LINK_TEXT, index):
             for special_char in SPECIAL_LINK_TEXT:
@@ -1346,14 +1288,12 @@ def human_like_typing(text: str, blog_index: int = 1):
         time.sleep(delay * random.uniform(0.8, 1.2))
         index += 1
 
-
 # ---------------- Win32 브라우저 창 제어 ----------------
 def win32_is_valid_hwnd(hwnd) -> bool:
     try:
         return bool(hwnd) and bool(user32.IsWindow(hwnd))
     except Exception:
         return False
-
 
 def win32_get_process_exe_name(pid: int) -> str:
     if pid <= 0:
@@ -1372,13 +1312,11 @@ def win32_get_process_exe_name(pid: int) -> str:
         kernel32.CloseHandle(handle)
     return ""
 
-
 def win32_get_window_rect(hwnd):
     rect = wintypes.RECT()
     if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
         return None
     return rect
-
 
 def win32_get_window_area(hwnd) -> int:
     rect = win32_get_window_rect(hwnd)
@@ -1386,26 +1324,76 @@ def win32_get_window_area(hwnd) -> int:
         return 0
     return max(0, rect.right - rect.left) * max(0, rect.bottom - rect.top)
 
+def win32_minimize_hwnd(hwnd) -> None:
+    if not win32_is_valid_hwnd(hwnd):
+        return
+    try:
+        user32.ShowWindow(hwnd, SW_MINIMIZE)
+        time.sleep(0.1)
+    except Exception:
+        pass
+
+
+def minimize_other_browser_windows(keep_hwnd, browser_kind: str = "chrome") -> None:
+    """이전 블로그 창이 포커스를 빼앗지 않도록 다른 브라우저 창을 최소화합니다."""
+    for hwnd in get_browser_hwnds(browser_kind):
+        if hwnd != keep_hwnd:
+            win32_minimize_hwnd(hwnd)
+
+
+def win32_is_maximized(hwnd) -> bool:
+    try:
+        return bool(user32.IsZoomed(hwnd))
+    except Exception:
+        return False
+
 
 def win32_set_window_geometry(hwnd, x: int, y: int, width: int, height: int) -> bool:
     if not win32_is_valid_hwnd(hwnd):
         return False
     try:
-        if user32.IsIconic(hwnd):
+        if user32.IsIconic(hwnd) or win32_is_maximized(hwnd):
             user32.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.15)
+        user32.ShowWindow(hwnd, SW_NORMAL)
+        time.sleep(0.05)
+        ok = bool(user32.MoveWindow(hwnd, x, y, width, height, True))
+        time.sleep(0.1)
+        if win32_is_maximized(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.1)
+            user32.ShowWindow(hwnd, SW_NORMAL)
             time.sleep(0.05)
-        return bool(user32.MoveWindow(hwnd, x, y, width, height, True))
+            ok = bool(user32.MoveWindow(hwnd, x, y, width, height, True))
+        return ok
     except Exception:
         return False
 
+
+def win32_ensure_browser_geometry(hwnd, retries: int = 4) -> bool:
+    """Edge 등 최대화로 열리는 브라우저를 837x1037 고정 크기로 맞춥니다."""
+    for attempt in range(retries):
+        if stop_flag:
+            return False
+        win32_force_foreground(hwnd)
+        win32_set_window_geometry(hwnd, WIN_X, WIN_Y, WIN_W, WIN_H)
+        time.sleep(0.2 + attempt * 0.1)
+        rect = win32_get_window_rect(hwnd)
+        if rect is None:
+            continue
+        width = rect.right - rect.left
+        height = rect.bottom - rect.top
+        if not win32_is_maximized(hwnd) and abs(width - WIN_W) <= 80 and abs(height - WIN_H) <= 80:
+            return True
+    return win32_set_window_geometry(hwnd, WIN_X, WIN_Y, WIN_W, WIN_H)
 
 def win32_force_foreground(hwnd) -> bool:
     if not win32_is_valid_hwnd(hwnd):
         return False
     try:
-        if user32.IsIconic(hwnd):
+        if user32.IsIconic(hwnd) or win32_is_maximized(hwnd):
             user32.ShowWindow(hwnd, SW_RESTORE)
-            time.sleep(0.05)
+            time.sleep(0.1)
 
         try:
             user32.AllowSetForegroundWindow(ASFW_ANY)
@@ -1435,14 +1423,12 @@ def win32_force_foreground(hwnd) -> bool:
     except Exception:
         return False
 
-
 def win32_activate_browser_hwnd(hwnd, adjust_geometry: bool = True) -> bool:
     if not win32_is_valid_hwnd(hwnd):
         return False
     if adjust_geometry:
-        win32_set_window_geometry(hwnd, WIN_X, WIN_Y, WIN_W, WIN_H)
+        win32_ensure_browser_geometry(hwnd)
     return win32_force_foreground(hwnd)
-
 
 def get_browser_hwnds(browser_kind: str = "chrome") -> set:
     process_name = BROWSER_PROCESS_NAMES.get(browser_kind, BROWSER_PROCESS_NAMES["chrome"])
@@ -1464,7 +1450,6 @@ def get_browser_hwnds(browser_kind: str = "chrome") -> set:
     user32.EnumWindows(enum_proc, 0)
     return hwnds
 
-
 def pick_largest_browser_hwnd(hwnds) -> Optional[int]:
     best_hwnd = None
     best_area = 0
@@ -1474,7 +1459,6 @@ def pick_largest_browser_hwnd(hwnds) -> Optional[int]:
             best_area = area
             best_hwnd = hwnd
     return best_hwnd
-
 
 def wait_for_new_browser_hwnd(browser_kind: str, before_hwnds: set, timeout_sec: float = 12.0) -> Optional[int]:
     deadline = time.time() + timeout_sec
@@ -1495,7 +1479,6 @@ def wait_for_new_browser_hwnd(browser_kind: str, before_hwnds: set, timeout_sec:
     all_hwnds = get_browser_hwnds(browser_kind)
     return pick_largest_browser_hwnd(all_hwnds)
 
-
 # ---------------- 사전 실행 자동화 함수 ----------------
 def find_chrome() -> Optional[str]:
     for path in CHROME_CANDIDATES:
@@ -1503,19 +1486,16 @@ def find_chrome() -> Optional[str]:
             return path
     return None
 
-
 def find_edge() -> Optional[str]:
     for path in EDGE_CANDIDATES:
         if os.path.isfile(path):
             return path
     return None
 
-
 def find_browser(browser_kind: str) -> Optional[str]:
     if browser_kind == "edge":
         return find_edge()
     return find_chrome()
-
 
 def force_browser_window_geometry(window) -> None:
     hwnd = getattr(window, "_hWnd", None)
@@ -1529,7 +1509,6 @@ def force_browser_window_geometry(window) -> None:
     except Exception:
         pass
 
-
 def _window_matches_browser_kind(window, browser_kind: str) -> bool:
     title = (getattr(window, "title", "") or "").lower()
     if "edge" in title or "microsoft edge" in title:
@@ -1537,7 +1516,6 @@ def _window_matches_browser_kind(window, browser_kind: str) -> bool:
     if "chrome" in title and "edge" not in title:
         return browser_kind == "chrome"
     return False
-
 
 def get_browser_windows(browser_kind: str = "chrome"):
     seen = set()
@@ -1577,14 +1555,11 @@ def get_browser_windows(browser_kind: str = "chrome"):
                     break
     return windows
 
-
 def get_chrome_windows():
     return get_browser_windows("chrome")
 
-
 def get_edge_windows():
     return get_browser_windows("edge")
-
 
 def activate_specific_browser_window(window, adjust_geometry: bool = False) -> bool:
     if window is None:
@@ -1607,10 +1582,8 @@ def activate_specific_browser_window(window, adjust_geometry: bool = False) -> b
     except Exception:
         return False
 
-
 def activate_specific_chrome_window(window, adjust_geometry: bool = False) -> bool:
     return activate_specific_browser_window(window, adjust_geometry=adjust_geometry)
-
 
 def activate_browser_window(adjust_geometry: bool = False) -> bool:
     global preferred_browser_hwnd, preferred_browser_kind
@@ -1633,10 +1606,8 @@ def activate_browser_window(adjust_geometry: bool = False) -> bool:
             return True
     return False
 
-
 def get_search_region():
     return (WIN_X, WIN_Y, WIN_W, WIN_H)
-
 
 def locate_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDENCE):
     if not os.path.isfile(template_path):
@@ -1666,7 +1637,6 @@ def locate_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDE
 
         time.sleep(SEARCH_INTERVAL)
 
-
 def locate_image_once(template_path: str, confidence: float = DEFAULT_CONFIDENCE):
     if stop_flag:
         return None
@@ -1687,7 +1657,6 @@ def locate_image_once(template_path: str, confidence: float = DEFAULT_CONFIDENCE
     except Exception:
         return None
 
-
 def click_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDENCE) -> bool:
     loc = locate_image_forever(template_path, confidence=confidence)
     if loc is None:
@@ -1696,7 +1665,6 @@ def click_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDEN
     pyautogui.click(cx, cy)
     time.sleep(0.2)
     return True
-
 
 def click_image_limited(template_path: str, attempts: int = 2, confidence: float = DEFAULT_CONFIDENCE, delay_sec: float = 0.35) -> bool:
     if not os.path.isfile(template_path):
@@ -1717,9 +1685,10 @@ def click_image_limited(template_path: str, attempts: int = 2, confidence: float
 
     return False
 
-
 def scroll_horizontal_to_right() -> None:
     activate_browser_window()
+    if preferred_browser_hwnd is not None and win32_is_valid_hwnd(preferred_browser_hwnd):
+        win32_ensure_browser_geometry(preferred_browser_hwnd)
 
     try:
         original_x, original_y = pyautogui.position()
@@ -1749,10 +1718,8 @@ def scroll_horizontal_to_right() -> None:
         except Exception:
             pass
 
-
 def click_login_template() -> bool:
     return click_image_forever(LOGIN_TEMPLATE, confidence=0.85)
-
 
 def type_login_credentials(naver_id: str, naver_password: str) -> None:
     time.sleep(1.0)
@@ -1768,7 +1735,6 @@ def type_login_credentials(naver_id: str, naver_password: str) -> None:
 
     pyautogui.press("enter")
 
-
 def click_emdfhr_after_login() -> bool:
     time.sleep(2.0)
     return click_image_limited(
@@ -1777,7 +1743,6 @@ def click_emdfhr_after_login() -> bool:
         confidence=0.85,
         delay_sec=0.5,
     )
-
 
 def navigate_to_blog_write(blog_write_url: str) -> None:
     time.sleep(1.5)
@@ -1790,14 +1755,12 @@ def navigate_to_blog_write(blog_write_url: str) -> None:
     paste_text_safely(blog_write_url)
     pyautogui.press("enter")
 
-
 def try_cnlth_before_help_header() -> None:
     time.sleep(1.5)
     activate_browser_window()
     time.sleep(0.2)
 
     click_image_limited(CNLTH_TEMPLATE, attempts=2, confidence=0.85, delay_sec=0.4)
-
 
 def dismiss_help_popup_or_arrow_up() -> None:
     time.sleep(1.0)
@@ -1843,14 +1806,12 @@ def dismiss_help_popup_or_arrow_up() -> None:
         pyautogui.press("up")
         time.sleep(0.1)
 
-
 def click_title_area_by_coordinate() -> None:
     """이미지 인식이 실패했을 때 제목 입력칸을 좌표로 클릭합니다."""
     activate_browser_window()
     time.sleep(0.15)
     pyautogui.click(TITLE_CLICK_X, TITLE_CLICK_Y)
     time.sleep(0.25)
-
 
 def click_body_area_by_coordinate() -> None:
     """본문 입력칸을 좌표로 클릭합니다."""
@@ -1859,27 +1820,70 @@ def click_body_area_by_coordinate() -> None:
     pyautogui.click(BODY_CLICK_X, BODY_CLICK_Y)
     time.sleep(0.25)
 
+def center_align_title_only() -> None:
+    """제목칸만 가운데 정렬합니다. 본문은 제목 입력 후에 처리합니다."""
+    time.sleep(0.25)
+    click_title_area_by_coordinate()
+    time.sleep(0.15)
+    pyautogui.hotkey("ctrl", "alt", "c")
+    time.sleep(0.2)
+
+
+def center_align_body_only() -> None:
+    click_body_area_by_coordinate()
+    time.sleep(0.15)
+    pyautogui.hotkey("ctrl", "alt", "c")
+    time.sleep(0.2)
+
 
 def center_align_title_and_body() -> None:
-    """
-    제목과 본문을 모두 가운데 정렬로 맞춘 뒤 다시 제목칸으로 돌아옵니다.
-    기존 down/up 방식은 두 번째 블로그에서 포커스가 꼬이면 다음 동작이 멈출 수 있어
-    제목 클릭 -> 제목 가운데 정렬 -> 본문 클릭 -> 본문 가운데 정렬 -> 제목 재클릭 방식으로 변경했습니다.
-    """
-    time.sleep(0.25)
-
-    pyautogui.hotkey("ctrl", "alt", "c")
-    time.sleep(0.2)
-
-    click_body_area_by_coordinate()
-    pyautogui.hotkey("ctrl", "alt", "c")
-    time.sleep(0.2)
-
+    center_align_title_only()
+    center_align_body_only()
     click_title_area_by_coordinate()
     time.sleep(0.2)
 
 
-def run_se_action(blog_label: str = "") -> bool:
+def ensure_title_field_ready(blog_index: int = 1, blog_label: str = "") -> None:
+    """두 번째/세 번째 블로그에서 제목칸 포커스가 빗나가는 문제를 방지합니다."""
+    if blog_label:
+        set_status(f"{blog_label} 제목칸 포커스 확인 중...")
+
+    activate_browser_window()
+    time.sleep(0.25)
+
+    ok = click_image_limited(SE_TEMPLATE, attempts=6, confidence=0.80, delay_sec=0.35)
+    if not ok:
+        click_title_area_by_coordinate()
+        time.sleep(0.2)
+        click_title_area_by_coordinate()
+        time.sleep(0.2)
+
+    if blog_index >= 2:
+        time.sleep(0.35)
+        click_title_area_by_coordinate()
+        time.sleep(0.25)
+
+    center_align_title_only()
+    time.sleep(0.15)
+
+
+def type_blog_title(title: str, blog_index: int = 1, blog_label: str = "") -> None:
+    """제목은 한 번에 붙여넣기합니다. 긴 제목·연속 실행 시 한 글자씩 치면 포커스가 빠지는 문제를 방지합니다."""
+    if not title:
+        return
+
+    ensure_title_field_ready(blog_index=blog_index, blog_label=blog_label)
+    activate_browser_window()
+    time.sleep(0.25)
+    click_title_area_by_coordinate()
+    time.sleep(0.2)
+    clear_current_input_field()
+    time.sleep(0.1)
+    paste_text_safely(title)
+    time.sleep(0.35)
+
+
+def run_se_action(blog_label: str = "", blog_index: int = 1) -> bool:
     """
     제목 입력칸을 준비합니다.
     se.png를 무한정 기다리지 않고, 못 찾으면 좌표 클릭으로 넘어가게 해서
@@ -1900,9 +1904,11 @@ def run_se_action(blog_label: str = "") -> bool:
             set_status(f"{blog_label} se.png 인식 실패, 좌표로 제목칸 클릭")
         click_title_area_by_coordinate()
 
-    center_align_title_and_body()
+    center_align_title_only()
+    if blog_index >= 2:
+        time.sleep(0.2)
+        click_title_area_by_coordinate()
     return True
-
 
 def run_pre_typing_action(
     naver_id: str,
@@ -1911,6 +1917,7 @@ def run_pre_typing_action(
     blog_label: str,
     use_incognito: bool = True,
     browser_kind: str = "chrome",
+    blog_index: int = 1,
 ) -> None:
     global preferred_browser_hwnd, preferred_browser_kind
 
@@ -1950,7 +1957,7 @@ def run_pre_typing_action(
         set_status(f"{blog_label} 사전 작업: 일반 {browser_label} 창 실행 중...")
 
     subprocess.Popen(launch_cmd)
-    time.sleep(2.0)
+    time.sleep(2.5 if browser_kind == "edge" else 2.0)
 
     new_hwnd = wait_for_new_browser_hwnd(browser_kind, before_hwnds, timeout_sec=12.0)
     if new_hwnd is None:
@@ -1958,11 +1965,23 @@ def run_pre_typing_action(
 
     preferred_browser_hwnd = new_hwnd
 
+    if blog_index >= 2:
+        minimize_other_browser_windows(preferred_browser_hwnd, browser_kind)
+        if browser_kind == "edge":
+            minimize_other_browser_windows(preferred_browser_hwnd, "chrome")
+
     set_status(f"{blog_label} 사전 작업: {browser_label} 창 활성화 중...")
+    geometry_retries = 6 if browser_kind == "edge" else 4
+    win32_ensure_browser_geometry(preferred_browser_hwnd, retries=geometry_retries)
     if not win32_activate_browser_hwnd(preferred_browser_hwnd, adjust_geometry=True):
         activate_browser_window()
 
-    time.sleep(0.2)
+    time.sleep(0.3)
+
+    if browser_kind == "edge":
+        set_status(f"{blog_label} 사전 작업: Edge 창 크기 재조정 중...")
+        win32_ensure_browser_geometry(preferred_browser_hwnd, retries=6)
+        time.sleep(0.25)
 
     if stop_flag:
         return
@@ -2011,7 +2030,7 @@ def run_pre_typing_action(
         return
 
     set_status(f"{blog_label} 사전 작업: 제목칸 / 가운데 정렬 준비 중...")
-    if not run_se_action(blog_label):
+    if not run_se_action(blog_label, blog_index=blog_index):
         return
 
     set_status(f"{blog_label} 사전 작업 완료")
@@ -2026,7 +2045,7 @@ def move_to_body_after_title(blog_index: int) -> None:
 
     # 엔터 후 포커스가 본문으로 안 내려가는 경우가 있어 본문 위치를 한 번 더 클릭합니다.
     click_body_area_by_coordinate()
-
+    center_align_body_only()
 
 def run_blog_typing_workflow(
     blog_label: str,
@@ -2046,25 +2065,29 @@ def run_blog_typing_workflow(
         blog_label,
         use_incognito=use_incognito,
         browser_kind=browser_kind,
+        blog_index=blog_index,
     )
 
     if stop_flag:
         return
 
-    time.sleep(1.0)
+    wait_sec = 1.5 if blog_index == 1 else 2.5
+    time.sleep(wait_sec)
 
     set_status(f"{blog_label} 제목 입력 중...")
-    human_like_typing(title, blog_index=blog_index)
+    type_blog_title(title, blog_index=blog_index, blog_label=blog_label)
 
     if stop_flag:
         return
+
+    activate_browser_window()
+    time.sleep(0.2)
 
     move_to_body_after_title(blog_index)
 
     if content:
         set_status(f"{blog_label} 본문 입력 중...")
         human_like_typing(content, blog_index=blog_index)
-
 
 BLOG_RUN_PROFILES = {
     1: {
@@ -2087,7 +2110,6 @@ BLOG_RUN_PROFILES = {
     },
 }
 
-
 def get_blog_account_values(blog_index: int):
     if blog_index == 1:
         return (
@@ -2109,7 +2131,6 @@ def get_blog_account_values(blog_index: int):
         )
     raise ValueError(f"지원하지 않는 블로그 번호: {blog_index}")
 
-
 def validate_blog_content(blog_index: int):
     title1, content1, title2, content2, title3, content3 = get_title_and_content_values()
     titles = {1: title1, 2: title2, 3: title3}
@@ -2125,7 +2146,6 @@ def validate_blog_content(blog_index: int):
         messagebox.showwarning("경고", f"{order_label} 블로그 제목을 입력하세요.")
         return None, None
     return title, content
-
 
 def _run_automation_in_thread(workflow_callable, complete_message: str, start_message: str = "3초 후 시작 (입력창 클릭 준비)...") -> bool:
     global running, stop_flag
@@ -2163,7 +2183,6 @@ def _run_automation_in_thread(workflow_callable, complete_message: str, start_me
     threading.Thread(target=task, daemon=True).start()
     return True
 
-
 def start_blog_test(blog_index: int):
     profile = BLOG_RUN_PROFILES.get(blog_index)
     if profile is None:
@@ -2195,7 +2214,6 @@ def start_blog_test(blog_index: int):
         complete_message=profile["complete_message"],
         start_message=f"{blog_label} 테스트: 3초 후 시작...",
     )
-
 
 def start_typing():
     global running, stop_flag
@@ -2266,7 +2284,7 @@ def start_typing():
                     set_status("작업 중지됨")
                     return
 
-                time.sleep(1.0)
+                time.sleep(3.0)
 
                 run_blog_typing_workflow(
                     "블로그 2",
@@ -2291,7 +2309,7 @@ def start_typing():
                     set_status("작업 중지됨")
                     return
 
-                time.sleep(1.0)
+                time.sleep(3.0)
 
                 run_blog_typing_workflow(
                     "블로그 3",
@@ -2323,7 +2341,6 @@ def start_typing():
 
     threading.Thread(target=task, daemon=True).start()
 
-
 # ---------------- [탭 2] 블로그 프롬프트 ----------------
 def get_cursor_api_key() -> str:
     for name in ("CURSOR_API_KEY", "CURSOR_AI_API_KEY", "CURSOR_API"):
@@ -2332,10 +2349,8 @@ def get_cursor_api_key() -> str:
             return value
     return ""
 
-
 def build_blog_ai_prompt(template_index: int, script: str) -> str:
     return prompt_templates[template_index].format(script=script)
-
 
 def _strip_markdown_fence(text: str) -> str:
     text = text.strip()
@@ -2348,7 +2363,6 @@ def _strip_markdown_fence(text: str) -> str:
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
     return "\n".join(lines).strip()
-
 
 def _extract_fenced_codeblocks(text: str) -> list[str]:
     blocks = []
@@ -2365,12 +2379,10 @@ def _extract_fenced_codeblocks(text: str) -> list[str]:
                 blocks.append(content)
     return blocks
 
-
 BLOG_POST_LABEL_RE = re.compile(
     r"(?:\*\*)?\s*Blog\s*Post\s*(\d+)\s*(Title|Body)\s*[:：]?\s*(?:\*\*)?",
     flags=re.IGNORECASE,
 )
-
 
 def _normalize_section_content(raw: str) -> str:
     raw = raw.strip()
@@ -2386,7 +2398,6 @@ def _normalize_section_content(raw: str) -> str:
     if raw.startswith("```"):
         return _strip_markdown_fence(raw)
     return raw
-
 
 def _posts_from_blog_post_labels(text: str) -> list[tuple[str, str]]:
     """Blog Post 1 Title / Body 라벨 기준으로 구간을 잘라냅니다."""
@@ -2417,7 +2428,6 @@ def _posts_from_blog_post_labels(text: str) -> list[tuple[str, str]]:
             posts.append((title, body))
     return posts
 
-
 def _posts_from_blog_post_codeblocks(text: str) -> list[tuple[str, str]]:
     """A-VICLE 프롬프트 형식: Blog Post N Title/Body + 6개 마크다운 코드블록."""
     label_posts = _posts_from_blog_post_labels(text)
@@ -2434,14 +2444,12 @@ def _posts_from_blog_post_codeblocks(text: str) -> list[tuple[str, str]]:
 
     return []
 
-
 def _save_cursor_debug_response(text: str) -> str:
     os.makedirs(get_output_dir(), exist_ok=True)
     debug_path = os.path.join(get_output_dir(), "cursor_ai_last_response.txt")
     with open(debug_path, "w", encoding="utf-8") as f:
         f.write(text)
     return debug_path
-
 
 def _posts_from_storage_markers(text: str) -> list[tuple[str, str]]:
     title1, body1, title2, body2, title3, body3 = split_blog_file_content(text)
@@ -2451,13 +2459,11 @@ def _posts_from_storage_markers(text: str) -> list[tuple[str, str]]:
         (title3.strip(), body3.strip()),
     ]
 
-
 def _append_post(posts: list[tuple[str, str]], title: str, body: str):
     title = title.strip()
     body = body.strip()
     if title:
         posts.append((title, body))
-
 
 def _posts_from_section_split(text: str) -> list[tuple[str, str]]:
     parts = re.split(
@@ -2476,7 +2482,6 @@ def _posts_from_section_split(text: str) -> list[tuple[str, str]]:
         title, body = split_legacy_title_and_body(part)
         _append_post(posts, title, body)
     return posts
-
 
 def _posts_from_labeled_title_body(text: str) -> list[tuple[str, str]]:
     chunks = re.split(r"\n(?=(?:제목|TITLE)\s*[:：])", text, flags=re.IGNORECASE)
@@ -2504,7 +2509,6 @@ def _posts_from_labeled_title_body(text: str) -> list[tuple[str, str]]:
 
     return posts
 
-
 def _posts_from_heading_blocks(text: str) -> list[tuple[str, str]]:
     parts = re.split(
         r"\n(?=(?:\[|\【)?(?:원고|글|POST|Blog)\s*\d+[^\n]*(?:\]|\】)?\s*\n|"
@@ -2522,7 +2526,6 @@ def _posts_from_heading_blocks(text: str) -> list[tuple[str, str]]:
         _append_post(posts, title, body)
     return posts
 
-
 def _posts_from_blank_line_blocks(text: str) -> list[tuple[str, str]]:
     parts = re.split(r"\n{3,}", text.strip())
     posts = []
@@ -2536,7 +2539,6 @@ def _posts_from_blank_line_blocks(text: str) -> list[tuple[str, str]]:
             _append_post(posts, title, body)
 
     return posts
-
 
 def _choose_best_posts(text: str, expected_count: int) -> list[tuple[str, str]]:
     codeblock_posts = [post for post in _posts_from_blog_post_codeblocks(text) if post[0].strip()]
@@ -2565,7 +2567,6 @@ def _choose_best_posts(text: str, expected_count: int) -> list[tuple[str, str]]:
             return [(title.strip(), body.strip())]
 
     return best_posts
-
 
 def parse_blog_posts(text: str, expected_count: int) -> list[tuple[str, str]]:
     candidates = []
@@ -2603,11 +2604,9 @@ def parse_blog_posts(text: str, expected_count: int) -> list[tuple[str, str]]:
         result.append((title, body))
     return result
 
-
 def _cursor_api_auth_header(api_key: str) -> str:
     token = base64.b64encode(f"{api_key}:".encode("utf-8")).decode("ascii")
     return f"Basic {token}"
-
 
 def _cursor_api_request(
     method: str,
@@ -2638,7 +2637,6 @@ def _cursor_api_request(
         raise RuntimeError(f"Cursor API 오류 ({e.code}): {detail or e.reason}") from e
     except urllib.error.URLError as e:
         raise RuntimeError(f"Cursor API 연결 실패: {e.reason}") from e
-
 
 def _fetch_run_stream_text(agent_id: str, run_id: str, api_key: str) -> str:
     """run.result가 요약만 줄 때 stream의 assistant 전문을 수집합니다."""
@@ -2689,7 +2687,6 @@ def _fetch_run_stream_text(agent_id: str, run_id: str, api_key: str) -> str:
         return assistant_text
     return result_text
 
-
 def _wait_cursor_run_result(agent_id: str, run_id: str, api_key: str) -> str:
     for _ in range(180):
         run_data = _cursor_api_request(
@@ -2715,7 +2712,6 @@ def _wait_cursor_run_result(agent_id: str, run_id: str, api_key: str) -> str:
         time.sleep(5)
 
     raise RuntimeError("Cursor AI 응답 시간이 초과되었습니다.")
-
 
 def call_cursor_ai(prompt: str, api_key: str) -> str:
     """Cursor Cloud REST API로 블로그 글을 생성합니다 (로컬 SDK 소켓 충돌 방지)."""
@@ -2744,7 +2740,6 @@ def call_cursor_ai(prompt: str, api_key: str) -> str:
 
     return _wait_cursor_run_result(agent_id, run_id, api_key)
 
-
 def apply_blog_contents(blogs: list[tuple[str, str]]):
     editors = (
         (title_var_1, editor_1),
@@ -2762,12 +2757,10 @@ def apply_blog_contents(blogs: list[tuple[str, str]]):
             title_var.set("")
             editor.delete("1.0", tk.END)
 
-
 def set_cursor_ai_buttons_enabled(enabled: bool):
     state = tk.NORMAL if enabled else tk.DISABLED
     for btn in cursor_ai_buttons:
         btn.config(state=state)
-
 
 def start_cursor_ai_workflow(blog_count: int):
     global running
@@ -2846,7 +2839,6 @@ def start_cursor_ai_workflow(blog_count: int):
 
     threading.Thread(target=task, daemon=True).start()
 
-
 def copy_prompt(index: int):
     script = prompt_text_input.get("1.0", tk.END).strip()
 
@@ -2874,7 +2866,6 @@ def copy_prompt(index: int):
         messagebox.showinfo("완료", f"{prompt_button_names[index]} 내용이 클립보드에 복사되었습니다!")
     except Exception as e:
         messagebox.showerror("오류", f"클립보드 복사 실패: {e}")
-
 
 def edit_prompt_template(index: int):
     win = tk.Toplevel(root)
@@ -2932,7 +2923,6 @@ def edit_prompt_template(index: int):
     btn_save = create_flat_button(bottom, "저장", save_prompt, ACCENT, ACCENT_HOVER)
     btn_save.pack(side="right", padx=5)
 
-
 def edit_prompt_button_name(index: int):
     current_name = prompt_button_names[index]
     new_name = simpledialog.askstring(
@@ -2955,13 +2945,11 @@ def edit_prompt_button_name(index: int):
     save_config()
     messagebox.showinfo("완료", f"프롬프트 {index + 1} 버튼 이름이 변경되었습니다.")
 
-
 def refresh_prompt_buttons():
     for i in range(4):
         prompt_copy_buttons[i].config(text=prompt_button_names[i])
         prompt_edit_buttons[i].config(text=f"프롬프트 {i + 1} 내용 수정")
         prompt_name_buttons[i].config(text=f"프롬프트 {i + 1} 버튼 이름 수정")
-
 
 def load_image_with_exif_fix(path: str):
     img = Image.open(path)
@@ -2971,7 +2959,6 @@ def load_image_with_exif_fix(path: str):
         pass
     return img
 
-
 # ---------------- [탭 3] 이미지 일괄 변환 및 이름 변경 ----------------
 def get_image_files(folder: str):
     files = []
@@ -2980,7 +2967,6 @@ def get_image_files(folder: str):
             files.append(file_name)
     files.sort()
     return files
-
 
 def generate_unique_image_names(car_type: str, count: int) -> list[str]:
     """차종과 고정 키워드를 조합해 서로 다른 파일명을 생성합니다."""
@@ -2999,20 +2985,17 @@ def generate_unique_image_names(car_type: str, count: int) -> list[str]:
 
     return unique_candidates[:count]
 
-
 def img_select_folder():
     folder = filedialog.askdirectory()
     if folder:
         img_folder_path.set(folder)
         save_config()
 
-
 def _folder_has_heic(folder: str) -> bool:
     return any(
         file_name.lower().endswith((".heic", ".heif"))
         for file_name in os.listdir(folder)
     )
-
 
 def _save_images_to_subfolder(
     source_folder: str,
@@ -3031,7 +3014,6 @@ def _save_images_to_subfolder(
         with load_image_with_exif_fix(old_path) as img:
             rgb_img = img.convert("RGB")
             rgb_img.save(new_path, "JPEG", quality=100)
-
 
 def start_img_process():
     car_type = car_type_var.get().strip()
@@ -3099,7 +3081,6 @@ def start_img_process():
         )
     except Exception as e:
         messagebox.showerror("오류", f"처리 중 오류 발생:\n{str(e)}")
-
 
 # =====================================================================
 # ---------------- GUI 고급화 설정 (모던 테마 & 헬퍼 함수) ----------------
@@ -3226,7 +3207,6 @@ btn_ren.pack(side="left", expand=True, fill="x", padx=(2, 0))
 
 btn_refresh = create_flat_button(left_f, "목록 새로고침", load_txt_files, SUCCESS, SUCCESS_HOVER, font=("맑은 고딕", 10, "bold"), pady=6)
 btn_refresh.pack(fill="x")
-
 
 blog_run_mode_var = tk.IntVar(value=1)
 naver_id_var_1 = tk.StringVar(value=DEFAULT_NAVER_ID_1)
@@ -3572,7 +3552,6 @@ tk.Label(tab3, textvariable=img_status_var, fg=WARNING, bg=BG_MAIN, font=("맑�
 refresh_prompt_buttons()
 load_txt_files()
 
-
 # ---------------- 단축키 감지 및 실행 ----------------
 def on_press(key):
     global stop_flag
@@ -3583,7 +3562,6 @@ def on_press(key):
             stop_flag = True
     except Exception:
         pass
-
 
 keyboard.Listener(on_press=on_press, daemon=True).start()
 
