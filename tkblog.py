@@ -533,7 +533,7 @@ def clear_current_input_field() -> None:
     time.sleep(0.08)
 
 # ---------------- [공통] 설정 저장/불러오기 ----------------
-DEFAULT_WINDOW_GEOMETRY = "1500x960"
+DEFAULT_WINDOW_GEOMETRY = "1580x920"
 
 def _read_config_file_data():
     config_path = resolve_config_path()
@@ -1060,6 +1060,47 @@ def rename_txt_file():
         set_status("파일명 변경 완료")
     except Exception as e:
         messagebox.showerror("오류", f"이름 변경 실패: {e}")
+
+def delete_txt_file():
+    global current_selected_file
+
+    file_name = current_selected_file
+    if not file_name:
+        selected = listbox.curselection()
+        if selected:
+            file_name = listbox.get(selected[0])
+
+    if not file_name:
+        messagebox.showwarning("알림", "삭제할 파일을 선택하세요.")
+        return
+
+    if not messagebox.askyesno("삭제 확인", f"'{file_name}' 파일을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다."):
+        return
+
+    try:
+        full_path = resolve_txt_path(file_name)
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+
+        legacy_path = os.path.join(BASE_DIR, file_name)
+        if (
+            os.path.isfile(legacy_path)
+            and os.path.abspath(legacy_path) != os.path.abspath(full_path)
+        ):
+            os.remove(legacy_path)
+
+        current_selected_file = None
+        title_var_1.set("")
+        editor_1.delete("1.0", tk.END)
+        title_var_2.set("")
+        editor_2.delete("1.0", tk.END)
+        title_var_3.set("")
+        editor_3.delete("1.0", tk.END)
+
+        load_txt_files(restore_selection=False)
+        set_status(f"삭제 완료: {file_name}")
+    except Exception as e:
+        messagebox.showerror("오류", f"삭제 실패: {e}")
 
 def on_select_txt(event=None):
     global current_selected_file
@@ -3110,6 +3151,89 @@ def create_flat_button(parent, text, command, bg_color, hover_color, fg="white",
     btn.bind("<Leave>", lambda e, b=btn, c=bg_color: b.config(bg=c))
     return btn
 
+def create_styled_entry(parent, textvariable, show=None):
+    kwargs = {
+        "textvariable": textvariable,
+        "font": ("맑은 고딕", 10),
+        "relief": "flat",
+        "highlightthickness": 1,
+        "highlightbackground": BORDER,
+        "highlightcolor": ACCENT,
+        "bg": INPUT_BG,
+        "fg": TEXT_MAIN,
+    }
+    if show:
+        kwargs["show"] = show
+    entry = tk.Entry(parent, **kwargs)
+    entry.bind("<FocusOut>", lambda event: save_config())
+    return entry
+
+def create_form_field(parent, label_text, textvariable, row, show=None):
+    tk.Label(
+        parent,
+        text=label_text,
+        font=("맑은 고딕", 9, "bold"),
+        bg=BG_PANEL,
+        fg=TEXT_MUTED,
+        width=11,
+        anchor="e",
+    ).grid(row=row, column=0, sticky="e", padx=(0, 10), pady=5)
+    entry = create_styled_entry(parent, textvariable, show=show)
+    entry.grid(row=row, column=1, sticky="ew", pady=5, ipady=6)
+    return entry
+
+def build_account_tab(parent, id_var, pw_var, url_var, phone_var, browser_hint):
+    form = tk.Frame(parent, bg=BG_PANEL, padx=8, pady=8)
+    form.pack(fill="both", expand=True)
+    form.grid_columnconfigure(1, weight=1)
+
+    tk.Label(
+        form,
+        text=browser_hint,
+        font=("맑은 고딕", 9),
+        bg=BG_PANEL,
+        fg=TEXT_MUTED,
+    ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+    create_form_field(form, "아이디", id_var, 1)
+    create_form_field(form, "비밀번호", pw_var, 2, show="*")
+    create_form_field(form, "글쓰기 URL", url_var, 3)
+    create_form_field(form, "견적 전화", phone_var, 4)
+
+def build_blog_editor_tab(parent, blog_index, test_label, title_var):
+    create_blog_action_row(parent, blog_index, test_label)
+
+    title_row = tk.Frame(parent, bg=BG_PANEL)
+    title_row.pack(fill="x", pady=(6, 4))
+    tk.Label(
+        title_row, text="제목", font=("맑은 고딕", 10, "bold"),
+        bg=BG_PANEL, fg=TEXT_MAIN, width=6, anchor="w",
+    ).pack(side="left")
+    title_entry = create_styled_entry(title_row, title_var)
+    title_entry.pack(side="left", fill="x", expand=True, ipady=7)
+
+    tk.Label(
+        parent, text="내용", font=("맑은 고딕", 10, "bold"),
+        bg=BG_PANEL, fg=TEXT_MAIN,
+    ).pack(anchor="w", pady=(4, 4))
+    editor = tk.Text(
+        parent,
+        font=("맑은 고딕", 11),
+        height=22,
+        undo=True,
+        wrap="word",
+        relief="flat",
+        highlightthickness=1,
+        highlightbackground=BORDER,
+        highlightcolor=ACCENT,
+        bg=INPUT_BG,
+        fg=TEXT_MAIN,
+        padx=12,
+        pady=12,
+    )
+    editor.pack(fill="both", expand=True)
+    return title_entry, editor
+
 root = tk.Tk()
 root.title("블로그 마스터 자동화 툴 (통합 버전)")
 root.geometry(DEFAULT_WINDOW_GEOMETRY)
@@ -3135,78 +3259,70 @@ notebook.pack(fill="both", expand=True, padx=10, pady=10)
 tab1 = tk.Frame(notebook, bg=BG_MAIN)
 notebook.add(tab1, text="  자동 타이핑 및 파일 관리  ")
 
-left_f = tk.Frame(tab1, width=280, bg=BG_MAIN)
-left_f.pack(side="left", fill="y", padx=(10, 5), pady=10)
+tab1_paned = ttk.PanedWindow(tab1, orient=tk.HORIZONTAL)
+tab1_paned.pack(fill="both", expand=True, padx=10, pady=10)
 
-right_container = tk.Frame(tab1, bg=BG_MAIN)
-right_container.pack(side="right", fill="both", expand=True, padx=(5, 10), pady=10)
+left_f = tk.Frame(tab1_paned, bg=BG_MAIN, width=300)
+right_f = tk.Frame(tab1_paned, bg=BG_MAIN)
+tab1_paned.add(left_f, weight=0)
+tab1_paned.add(right_f, weight=1)
 
-right_canvas = tk.Canvas(right_container, bg=BG_MAIN, highlightthickness=0)
-right_scrollbar = ttk.Scrollbar(right_container, orient="vertical", command=right_canvas.yview)
-right_f = tk.Frame(right_canvas, bg=BG_MAIN)
+tk.Label(left_f, text="📁 원고 파일", font=("맑은 고딕", 12, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(anchor="w", pady=(0, 8))
 
-right_f.bind(
-    "<Configure>",
-    lambda e: right_canvas.configure(scrollregion=right_canvas.bbox("all"))
+listbox_frame = tk.Frame(left_f, bg=BG_MAIN)
+listbox_frame.pack(fill="both", expand=True)
+
+listbox_scroll = ttk.Scrollbar(listbox_frame, orient="vertical")
+listbox = tk.Listbox(
+    listbox_frame,
+    height=28,
+    font=("맑은 고딕", 10),
+    exportselection=False,
+    relief="flat",
+    highlightthickness=1,
+    highlightbackground=BORDER,
+    highlightcolor=ACCENT,
+    bg=BG_PANEL,
+    fg=TEXT_MAIN,
+    selectbackground=ACCENT,
+    selectforeground="white",
+    activestyle="none",
+    yscrollcommand=listbox_scroll.set,
 )
-
-right_canvas_window = right_canvas.create_window((0, 0), window=right_f, anchor="nw")
-
-def _on_right_canvas_configure(event):
-    right_canvas.itemconfigure(right_canvas_window, width=event.width)
-
-right_canvas.bind("<Configure>", _on_right_canvas_configure)
-right_canvas.configure(yscrollcommand=right_scrollbar.set)
-
-right_canvas.pack(side="left", fill="both", expand=True)
-right_scrollbar.pack(side="right", fill="y")
-
-def _bind_right_scroll(event=None):
-    right_canvas.bind_all("<MouseWheel>", _on_right_mousewheel)
-    right_canvas.bind_all("<Button-4>", _on_right_mousewheel)
-    right_canvas.bind_all("<Button-5>", _on_right_mousewheel)
-
-def _unbind_right_scroll(event=None):
-    right_canvas.unbind_all("<MouseWheel>")
-    right_canvas.unbind_all("<Button-4>")
-    right_canvas.unbind_all("<Button-5>")
-
-def _on_right_mousewheel(event):
-    try:
-        if hasattr(event, "delta") and event.delta:
-            right_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        elif getattr(event, "num", None) == 4:
-            right_canvas.yview_scroll(-3, "units")
-        elif getattr(event, "num", None) == 5:
-            right_canvas.yview_scroll(3, "units")
-    except Exception:
-        pass
-
-right_canvas.bind("<Enter>", _bind_right_scroll)
-right_canvas.bind("<Leave>", _unbind_right_scroll)
-right_f.bind("<Enter>", _bind_right_scroll)
-right_f.bind("<Leave>", _unbind_right_scroll)
-
-tk.Label(left_f, text="📁 파일 목록", font=("맑은 고딕", 11, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(pady=(0, 8))
-
-listbox = tk.Listbox(left_f, height=25, font=("맑은 고딕", 10), exportselection=False,
-                     relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, 
-                     bg=BG_PANEL, fg=TEXT_MAIN, selectbackground=ACCENT, selectforeground="white", activestyle="none")
-listbox.pack(fill="both", expand=True)
+listbox.pack(side="left", fill="both", expand=True)
+listbox_scroll.config(command=listbox.yview)
+listbox_scroll.pack(side="right", fill="y")
 listbox.bind("<<ListboxSelect>>", on_select_txt)
 listbox.bind("<FocusOut>", on_listbox_focus_out)
+listbox.bind("<Delete>", lambda event: delete_txt_file())
 
 f_btn_f = tk.Frame(left_f, bg=BG_MAIN)
-f_btn_f.pack(fill="x", pady=8)
+f_btn_f.pack(fill="x", pady=(10, 4))
 
 btn_new = create_flat_button(f_btn_f, "새 파일", create_txt_file, ACCENT, ACCENT_HOVER, font=("맑은 고딕", 10, "bold"), pady=6)
-btn_new.pack(side="left", expand=True, fill="x", padx=(0, 2))
+btn_new.pack(side="left", expand=True, fill="x", padx=(0, 3))
 
 btn_ren = create_flat_button(f_btn_f, "이름 변경", rename_txt_file, WARNING, WARNING_HOVER, font=("맑은 고딕", 10, "bold"), pady=6)
-btn_ren.pack(side="left", expand=True, fill="x", padx=(2, 0))
+btn_ren.pack(side="left", expand=True, fill="x", padx=(3, 0))
 
-btn_refresh = create_flat_button(left_f, "목록 새로고침", load_txt_files, SUCCESS, SUCCESS_HOVER, font=("맑은 고딕", 10, "bold"), pady=6)
-btn_refresh.pack(fill="x")
+f_btn_f2 = tk.Frame(left_f, bg=BG_MAIN)
+f_btn_f2.pack(fill="x", pady=(0, 4))
+
+btn_del = create_flat_button(f_btn_f2, "삭제", delete_txt_file, DANGER, DANGER_HOVER, font=("맑은 고딕", 10, "bold"), pady=6)
+btn_del.pack(side="left", expand=True, fill="x", padx=(0, 3))
+
+btn_refresh = create_flat_button(f_btn_f2, "새로고침", load_txt_files, SUCCESS, SUCCESS_HOVER, font=("맑은 고딕", 10, "bold"), pady=6)
+btn_refresh.pack(side="left", expand=True, fill="x", padx=(3, 0))
+
+tk.Label(
+    left_f,
+    text="선택 후 Del 키로도 삭제할 수 있습니다.",
+    font=("맑은 고딕", 8),
+    bg=BG_MAIN,
+    fg=TEXT_MUTED,
+    wraplength=280,
+    justify="left",
+).pack(anchor="w", pady=(6, 0))
 
 blog_run_mode_var = tk.IntVar(value=1)
 naver_id_var_1 = tk.StringVar(value=DEFAULT_NAVER_ID_1)
@@ -3218,131 +3334,112 @@ blog_write_url_var_2 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_2)
 naver_id_var_3 = tk.StringVar(value=DEFAULT_NAVER_ID_3)
 naver_password_var_3 = tk.StringVar(value=DEFAULT_NAVER_PASSWORD_3)
 blog_write_url_var_3 = tk.StringVar(value=DEFAULT_BLOG_WRITE_URL_3)
-
-settings_frame = ttk.LabelFrame(right_f, text="  ⚙️ 블로그 계정 / 실행 설정  ", padding=(15, 15))
-settings_frame.pack(fill="x", pady=(0, 10))
-
-mode_frame = tk.Frame(settings_frame, bg=BG_PANEL)
-mode_frame.pack(fill="x", pady=(0, 12))
-tk.Label(mode_frame, text="실행 방식", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(side="left")
-ttk.Radiobutton(mode_frame, text="블로그 1개 쓰기", variable=blog_run_mode_var, value=1, command=save_config).pack(side="left", padx=(15, 10))
-ttk.Radiobutton(mode_frame, text="블로그 2개 쓰기", variable=blog_run_mode_var, value=2, command=save_config).pack(side="left", padx=(0, 10))
-ttk.Radiobutton(mode_frame, text="블로그 3개 쓰기 (3번째 Edge)", variable=blog_run_mode_var, value=3, command=save_config).pack(side="left")
-
-account_wrap = tk.Frame(settings_frame, bg=BG_PANEL)
-account_wrap.pack(fill="x")
-
-account_row1 = tk.Frame(account_wrap, bg=BG_PANEL)
-account_row1.pack(fill="x")
-
-account1_frame = ttk.LabelFrame(account_row1, text="  첫번째 블로그 계정 (Chrome 시크릿)  ", padding=(12, 12))
-account1_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
-account2_frame = ttk.LabelFrame(account_row1, text="  두번째 블로그 계정 (Chrome)  ", padding=(12, 12))
-account2_frame.pack(side="left", fill="both", expand=True, padx=(5, 0))
-
-account_row2 = tk.Frame(account_wrap, bg=BG_PANEL)
-account_row2.pack(fill="x", pady=(8, 0))
-
-account3_frame = ttk.LabelFrame(account_row2, text="  세번째 블로그 계정 (Edge)  ", padding=(12, 12))
-account3_frame.pack(side="left", fill="both", expand=True)
-
-for parent, id_var, pw_var, url_var in (
-    (account1_frame, naver_id_var_1, naver_password_var_1, blog_write_url_var_1),
-    (account2_frame, naver_id_var_2, naver_password_var_2, blog_write_url_var_2),
-    (account3_frame, naver_id_var_3, naver_password_var_3, blog_write_url_var_3),
-):
-    tk.Label(parent, text="네이버 아이디", font=("맑은 고딕", 9, "bold"), bg=BG_PANEL, fg=TEXT_MUTED).pack(anchor="w")
-    entry_id = tk.Entry(parent, textvariable=id_var, font=("맑은 고딕", 10), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
-    entry_id.pack(fill="x", ipady=6, pady=(2, 10))
-    entry_id.bind("<FocusOut>", lambda event: save_config())
-
-    tk.Label(parent, text="네이버 비밀번호", font=("맑은 고딕", 9, "bold"), bg=BG_PANEL, fg=TEXT_MUTED).pack(anchor="w")
-    entry_pw = tk.Entry(parent, textvariable=pw_var, font=("맑은 고딕", 10), show="*", relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
-    entry_pw.pack(fill="x", ipady=6, pady=(2, 10))
-    entry_pw.bind("<FocusOut>", lambda event: save_config())
-
-    tk.Label(parent, text="블로그 글쓰기 주소", font=("맑은 고딕", 9, "bold"), bg=BG_PANEL, fg=TEXT_MUTED).pack(anchor="w")
-    entry_url = tk.Entry(parent, textvariable=url_var, font=("맑은 고딕", 10), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
-    entry_url.pack(fill="x", ipady=6, pady=(2, 0))
-    entry_url.bind("<FocusOut>", lambda event: save_config())
-
-phone_wrap_frame = tk.Frame(right_f, bg=BG_MAIN)
-phone_wrap_frame.pack(fill="x", pady=(0, 10))
-
-phone_left_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 1 견적상담 전화번호  ", padding=(12, 12))
-phone_left_frame.pack(side="left", fill="x", expand=True, padx=(0, 5))
-phone_center_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 2 견적상담 전화번호  ", padding=(12, 12))
-phone_center_frame.pack(side="left", fill="x", expand=True, padx=(0, 5))
-phone_right_frame = ttk.LabelFrame(phone_wrap_frame, text="  📞 블로그 3 견적상담 전화번호  ", padding=(12, 12))
-phone_right_frame.pack(side="left", fill="x", expand=True)
-
 phone_number_var_1 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
 phone_number_var_2 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
 phone_number_var_3 = tk.StringVar(value=DEFAULT_PHONE_NUMBER)
 
-phone_entry_1 = tk.Entry(phone_left_frame, textvariable=phone_number_var_1, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
-phone_entry_1.pack(fill="x", ipady=6)
-phone_entry_1.bind("<FocusOut>", lambda event: save_config())
+right_paned = ttk.PanedWindow(right_f, orient=tk.VERTICAL)
+right_paned.pack(fill="both", expand=True)
 
-phone_entry_2 = tk.Entry(phone_center_frame, textvariable=phone_number_var_2, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
-phone_entry_2.pack(fill="x", ipady=6)
-phone_entry_2.bind("<FocusOut>", lambda event: save_config())
+editor_section = tk.Frame(right_paned, bg=BG_MAIN)
+settings_section = tk.Frame(right_paned, bg=BG_MAIN)
+right_paned.add(editor_section, weight=3)
+right_paned.add(settings_section, weight=1)
 
-phone_entry_3 = tk.Entry(phone_right_frame, textvariable=phone_number_var_3, font=("맑은 고딕", 11, "bold"), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, justify="center", fg=TEXT_MAIN)
-phone_entry_3.pack(fill="x", ipady=6)
-phone_entry_3.bind("<FocusOut>", lambda event: save_config())
+toolbar = tk.Frame(editor_section, bg=BG_MAIN)
+toolbar.pack(fill="x", pady=(0, 8))
 
-editor_wrap = ttk.PanedWindow(right_f, orient=tk.HORIZONTAL)
-editor_wrap.pack(fill="both", expand=True, pady=5)
+status_var = tk.StringVar(value="현재 상태: 대기 중")
+tk.Label(toolbar, textvariable=status_var, fg=SUCCESS, bg=BG_MAIN, font=("맑은 고딕", 11, "bold")).pack(side="left")
 
-blog1_editor_frame = ttk.LabelFrame(editor_wrap, text="  📝 첫번째 블로그 글  ", padding=(12, 12))
-blog2_editor_frame = ttk.LabelFrame(editor_wrap, text="  📝 두번째 블로그 글  ", padding=(12, 12))
-blog3_editor_frame = ttk.LabelFrame(editor_wrap, text="  📝 세번째 블로그 글  ", padding=(12, 12))
-editor_wrap.add(blog1_editor_frame, weight=1)
-editor_wrap.add(blog2_editor_frame, weight=1)
-editor_wrap.add(blog3_editor_frame, weight=1)
+btn_save_all = create_flat_button(
+    toolbar, "💾 저장", save_txt_file, ACCENT, ACCENT_HOVER,
+    font=("맑은 고딕", 10, "bold"), pady=6,
+)
+btn_save_all.pack(side="right")
 
-# 첫번째 블로그 입력창
-create_blog_action_row(blog1_editor_frame, 1, "▶ 블로그 1 테스트")
+editor_notebook = ttk.Notebook(editor_section)
+editor_notebook.pack(fill="both", expand=True)
 
-tk.Label(blog1_editor_frame, text="📰 첫번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
+blog1_editor_frame = tk.Frame(editor_notebook, bg=BG_PANEL, padx=12, pady=10)
+blog2_editor_frame = tk.Frame(editor_notebook, bg=BG_PANEL, padx=12, pady=10)
+blog3_editor_frame = tk.Frame(editor_notebook, bg=BG_PANEL, padx=12, pady=10)
+editor_notebook.add(blog1_editor_frame, text="  블로그 1  ")
+editor_notebook.add(blog2_editor_frame, text="  블로그 2  ")
+editor_notebook.add(blog3_editor_frame, text="  블로그 3  ")
+
 title_var_1 = tk.StringVar()
-title_entry_1 = tk.Entry(blog1_editor_frame, textvariable=title_var_1, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
-title_entry_1.pack(fill="x", pady=(0, 10), ipady=8)
+title_entry_1, editor_1 = build_blog_editor_tab(blog1_editor_frame, 1, "▶ 블로그 1 테스트", title_var_1)
 
-tk.Label(blog1_editor_frame, text="✍️ 첫번째 내용", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
-editor_1 = tk.Text(blog1_editor_frame, font=("맑은 고딕", 11), undo=True, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=10, pady=10)
-editor_1.pack(fill="both", expand=True)
-
-# 두번째 블로그 입력창
-create_blog_action_row(blog2_editor_frame, 2, "▶ 블로그 2 테스트")
-
-tk.Label(blog2_editor_frame, text="📰 두번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_2 = tk.StringVar()
-title_entry_2 = tk.Entry(blog2_editor_frame, textvariable=title_var_2, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
-title_entry_2.pack(fill="x", pady=(0, 10), ipady=8)
+title_entry_2, editor_2 = build_blog_editor_tab(blog2_editor_frame, 2, "▶ 블로그 2 테스트", title_var_2)
 
-tk.Label(blog2_editor_frame, text="✍️ 두번째 내용", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
-editor_2 = tk.Text(blog2_editor_frame, font=("맑은 고딕", 11), undo=True, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=10, pady=10)
-editor_2.pack(fill="both", expand=True)
-
-# 세번째 블로그 입력창
-create_blog_action_row(blog3_editor_frame, 3, "▶ 블로그 3 테스트")
-
-tk.Label(blog3_editor_frame, text="📰 세번째 제목", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
 title_var_3 = tk.StringVar()
-title_entry_3 = tk.Entry(blog3_editor_frame, textvariable=title_var_3, font=("맑은 고딕", 11), relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG)
-title_entry_3.pack(fill="x", pady=(0, 10), ipady=8)
+title_entry_3, editor_3 = build_blog_editor_tab(blog3_editor_frame, 3, "▶ 블로그 3 테스트", title_var_3)
 
-tk.Label(blog3_editor_frame, text="✍️ 세번째 내용", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(anchor="w", pady=(0,4))
-editor_3 = tk.Text(blog3_editor_frame, font=("맑은 고딕", 11), undo=True, relief="flat", highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bg=INPUT_BG, padx=10, pady=10)
-editor_3.pack(fill="both", expand=True)
+settings_frame = ttk.LabelFrame(settings_section, text="  ⚙️ 실행 / 계정 설정  ", padding=(12, 10))
+settings_frame.pack(fill="both", expand=True)
 
-speed_frame = ttk.LabelFrame(right_f, text="  ⚡ 타이핑 속도 설정 (CPM)  ", padding=(12, 12))
-speed_frame.pack(fill="x", pady=(15, 5))
+mode_frame = tk.Frame(settings_frame, bg=BG_PANEL)
+mode_frame.pack(fill="x", pady=(0, 10))
+tk.Label(mode_frame, text="실행 방식", font=("맑은 고딕", 10, "bold"), bg=BG_PANEL, fg=TEXT_MAIN).pack(side="left")
+ttk.Radiobutton(mode_frame, text="블로그 1개", variable=blog_run_mode_var, value=1, command=save_config).pack(side="left", padx=(12, 8))
+ttk.Radiobutton(mode_frame, text="블로그 2개", variable=blog_run_mode_var, value=2, command=save_config).pack(side="left", padx=(0, 8))
+ttk.Radiobutton(mode_frame, text="블로그 3개 (3번째 Edge)", variable=blog_run_mode_var, value=3, command=save_config).pack(side="left")
+
+settings_body = tk.Frame(settings_frame, bg=BG_PANEL)
+settings_body.pack(fill="both", expand=True)
+settings_body.grid_columnconfigure(0, weight=3)
+settings_body.grid_columnconfigure(1, weight=2)
+
+account_notebook = ttk.Notebook(settings_body)
+account_notebook.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+
+account_tab1 = tk.Frame(account_notebook, bg=BG_PANEL)
+account_tab2 = tk.Frame(account_notebook, bg=BG_PANEL)
+account_tab3 = tk.Frame(account_notebook, bg=BG_PANEL)
+account_notebook.add(account_tab1, text="  계정 1  ")
+account_notebook.add(account_tab2, text="  계정 2  ")
+account_notebook.add(account_tab3, text="  계정 3  ")
+
+build_account_tab(account_tab1, naver_id_var_1, naver_password_var_1, blog_write_url_var_1, phone_number_var_1, "Chrome 시크릿 모드")
+build_account_tab(account_tab2, naver_id_var_2, naver_password_var_2, blog_write_url_var_2, phone_number_var_2, "Chrome 일반 모드")
+build_account_tab(account_tab3, naver_id_var_3, naver_password_var_3, blog_write_url_var_3, phone_number_var_3, "Microsoft Edge")
+
+_syncing_blog_account_tabs = False
+
+def sync_account_tab_from_blog(event=None):
+    global _syncing_blog_account_tabs
+    if _syncing_blog_account_tabs:
+        return
+    try:
+        idx = editor_notebook.index(editor_notebook.select())
+        if account_notebook.index(account_notebook.select()) != idx:
+            _syncing_blog_account_tabs = True
+            account_notebook.select(idx)
+    finally:
+        _syncing_blog_account_tabs = False
+
+def sync_blog_tab_from_account(event=None):
+    global _syncing_blog_account_tabs
+    if _syncing_blog_account_tabs:
+        return
+    try:
+        idx = account_notebook.index(account_notebook.select())
+        if editor_notebook.index(editor_notebook.select()) != idx:
+            _syncing_blog_account_tabs = True
+            editor_notebook.select(idx)
+    finally:
+        _syncing_blog_account_tabs = False
+
+editor_notebook.bind("<<NotebookTabChanged>>", sync_account_tab_from_blog)
+account_notebook.bind("<<NotebookTabChanged>>", sync_blog_tab_from_account)
+
+speed_frame = ttk.LabelFrame(settings_body, text="  ⚡ 타이핑 속도 (CPM)  ", padding=(10, 10))
+speed_frame.grid(row=0, column=1, sticky="nsew")
 
 speed_value_var = tk.StringVar(value=f"현재 타수: {DEFAULT_SPEED_CPM} CPM")
-tk.Label(speed_frame, textvariable=speed_value_var, font=("맑은 고딕", 11, "bold"), fg=ACCENT, bg=BG_PANEL).pack(anchor="w", pady=(0, 5))
+tk.Label(speed_frame, textvariable=speed_value_var, font=("맑은 고딕", 10, "bold"), fg=ACCENT, bg=BG_PANEL).pack(anchor="w", pady=(0, 6))
 
 speed_scale = ttk.Scale(
     speed_frame,
@@ -3352,22 +3449,17 @@ speed_scale = ttk.Scale(
     command=update_speed_label,
 )
 speed_scale.set(DEFAULT_SPEED_CPM)
-speed_scale.pack(fill="x")
+speed_scale.pack(fill="x", pady=(0, 8))
 update_speed_label()
 speed_scale.bind("<ButtonRelease-1>", lambda event: save_config())
 
-btn_save_all = create_flat_button(right_f, "💾 작성 내용 저장하기", save_txt_file, ACCENT, ACCENT_HOVER, font=("맑은 고딕", 12, "bold"), pady=12)
-btn_save_all.pack(fill="x", pady=15)
-
-status_var = tk.StringVar(value="현재 상태: 대기 중")
-tk.Label(right_f, textvariable=status_var, fg=SUCCESS, bg=BG_MAIN, font=("맑은 고딕", 13, "bold")).pack()
 tk.Label(
-    right_f,
-    text="[F2] 블로그 자동 작성 시작  |  [ESC] 작업 강제 중지",
+    settings_section,
+    text="[F2] 블로그 자동 작성 시작   |   [ESC] 작업 강제 중지",
     fg=DANGER,
     bg=BG_MAIN,
-    font=("맑은 고딕", 11, "bold")
-).pack(pady=(5, 0))
+    font=("맑은 고딕", 10, "bold"),
+).pack(anchor="w", pady=(8, 0))
 
 # --- 탭2: 블로그 프롬프트 생성 ---
 tab2 = tk.Frame(notebook, bg=BG_MAIN)
