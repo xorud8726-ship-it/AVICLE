@@ -19,25 +19,25 @@ CHAT_ID = "-1003315436286"
 
 # -------------------- 단일 카탈로그 (이름 ➜ {category, image, price}) --------------------
 # image: ./avicle/<image>.(jpg|jpeg|png) 자동 탐색
-# price: 일반업체 공급가 (협력업체가격 +10%)
+# price: 일반업체 공급가 (기존 +10% 가격, 1·10원자리 1↑ 시 100원 올림)
 ITEM_CATALOG = {
     # 모듈 (세트,단품)
     "RGB 블루투스 모듈(하우동)": {"category": "모듈 (세트,단품)", "image": "haodeng", "price": 24200},
-    "순정연동 RGB 모듈 1개 세트 (RGB 모듈, 110 1개, 90 4개)": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 202125},
-    "순정연동 SE 모듈 1개 세트 (SE 모듈, 110 1개, 90 4개, 30 1개)": {"category": "모듈 (세트,단품)", "image": "se", "price": 309540},
-    "유니버셜 se 모듈 1개 세트 (SE 모듈,블루투스 모듈, 110 1개, 90 4개, 30 1개)": {"category": "모듈 (세트,단품)", "image": "seset", "price": 367290},
-    "순정연동 블루투스 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "uni", "price": 57750},
+    "순정연동 RGB 모듈 1개 세트 (RGB 모듈, 110 1개, 90 4개)": {"category": "모듈 (세트,단품)", "image": "rgb110", "price": 202200},
+    "순정연동 SE 모듈 1개 세트 (SE 모듈, 110 1개, 90 4개, 30 1개)": {"category": "모듈 (세트,단품)", "image": "se", "price": 309600},
+    "유니버셜 se 모듈 1개 세트 (SE 모듈,블루투스 모듈, 110 1개, 90 4개, 30 1개)": {"category": "모듈 (세트,단품)", "image": "seset", "price": 367300},
+    "순정연동 블루투스 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "uni", "price": 57800},
     "순정연동 RGB 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "rgbb", "price": 69300},
-    "순정연동 SE 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "see", "price": 150150},
+    "순정연동 SE 모듈 1개 단품": {"category": "모듈 (세트,단품)", "image": "see", "price": 150200},
 
     # LED (RGB/무빙)
-    "RGB 110cm": {"category": "LED (RGB/무빙)", "image": "rgb110", "price": 32340},
-    "RGB 90cm": {"category": "LED (RGB/무빙)", "image": "rgb90", "price": 28875},
-    "무빙 110cm": {"category": "LED (RGB/무빙)", "image": "moving110", "price": 43890},
-    "무빙 90cm": {"category": "LED (RGB/무빙)", "image": "moving90", "price": 33495},
-    "무빙 50cm": {"category": "LED (RGB/무빙)", "image": "moving50", "price": 20790},
-    "무빙 30cm": {"category": "LED (RGB/무빙)", "image": "moving30", "price": 17325},
-    "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12705},
+    "RGB 110cm": {"category": "LED (RGB/무빙)", "image": "rgb110", "price": 32400},
+    "RGB 90cm": {"category": "LED (RGB/무빙)", "image": "rgb90", "price": 28900},
+    "무빙 110cm": {"category": "LED (RGB/무빙)", "image": "moving110", "price": 43900},
+    "무빙 90cm": {"category": "LED (RGB/무빙)", "image": "moving90", "price": 33500},
+    "무빙 50cm": {"category": "LED (RGB/무빙)", "image": "moving50", "price": 20800},
+    "무빙 30cm": {"category": "LED (RGB/무빙)", "image": "moving30", "price": 17400},
+    "무빙 15cm(품절)": {"category": "LED (RGB/무빙)", "image": "led", "price": 12800},
 
     # 컵홀더 윙
     "컵홀더 (날개)(LED없음)": {"category": "컵홀더 윙", "image": "cupwing", "price": 36300},
@@ -46,27 +46,27 @@ ITEM_CATALOG = {
     "4P 커넥터 100PCS (암,숫)": {"category": "배선/커넥터/부자재", "image": "4pconnet", "price": 36300},
     "하네스 핀 KET 암,숫 100PCS": {"category": "배선/커넥터/부자재", "image": "ket", "price": 60500},
     "하네스 핀 AMP 암,숫 100PCS": {"category": "배선/커넥터/부자재", "image": "ket", "price": 121000},
-    "Y자 커넥터 1PCS": {"category": "배선/커넥터/부자재", "image": "4pY", "price": 1210},
+    "Y자 커넥터 1PCS": {"category": "배선/커넥터/부자재", "image": "4pY", "price": 1300},
     "전원케이블": {"category": "배선/커넥터/부자재", "image": "MAINPOWER", "price": 48400},
     "음악반응 스위치": {"category": "배선/커넥터/부자재", "image": "MUSICBUTTON", "price": 12100},
-    "3m 양면 테이프(회색)": {"category": "배선/커넥터/부자재", "image": "3M", "price": 42350},
+    "3m 양면 테이프(회색)": {"category": "배선/커넥터/부자재", "image": "3M", "price": 42400},
     "반사 테이프": {"category": "배선/커넥터/부자재", "image": "bansa", "price": 24200},
-    "아크릴 전용 3M 수광 테이프(투명) 5mm": {"category": "배선/커넥터/부자재", "image": "SOOKWANG", "price": 1815},
-    "아크릴 전용 3M 수광 테이프(투명) 3mm": {"category": "배선/커넥터/부자재", "image": "SOOKWANG", "price": 1210},
-    "풋등 RGB 롤바": {"category": "배선/커넥터/부자재", "image": "RGBRALL", "price": 30250},
+    "아크릴 전용 3M 수광 테이프(투명) 5mm": {"category": "배선/커넥터/부자재", "image": "SOOKWANG", "price": 1900},
+    "아크릴 전용 3M 수광 테이프(투명) 3mm": {"category": "배선/커넥터/부자재", "image": "SOOKWANG", "price": 1300},
+    "풋등 RGB 롤바": {"category": "배선/커넥터/부자재", "image": "RGBRALL", "price": 30300},
     "풋등 무빙 롤바": {"category": "배선/커넥터/부자재", "image": "MOVINGRALL", "price": 48400},
-    "RGB 단발 LED": {"category": "배선/커넥터/부자재", "image": "RGBONESHOT", "price": 9680},
-    "핸들 리모컨 5.1K 저항": {"category": "배선/커넥터/부자재", "image": "5.1K", "price": 1210},
-    "퓨즈 10A": {"category": "배선/커넥터/부자재", "image": "FUSE10A", "price": 1815},
+    "RGB 단발 LED": {"category": "배선/커넥터/부자재", "image": "RGBONESHOT", "price": 9700},
+    "핸들 리모컨 5.1K 저항": {"category": "배선/커넥터/부자재", "image": "5.1K", "price": 1300},
+    "퓨즈 10A": {"category": "배선/커넥터/부자재", "image": "FUSE10A", "price": 1900},
     "벤풍구 1열 (스팅어)": {"category": "배선/커넥터/부자재", "image": "STINGERAIRVENT1", "price": 145200},
     "벤풍구 2열 (스팅어)": {"category": "배선/커넥터/부자재", "image": "STINGERAIRVENT2", "price": 121000},
 
     # 완제품 세트
     "RGB 스피커 2개 1SET": {"category": "완제품 세트", "image": "speaker", "price": 60500},
     "무빙 스피커 2개 1SET": {"category": "완제품 세트", "image": "speaker", "price": 72600},
-    "RGB 풋등 1열 (2개)": {"category": "완제품 세트", "image": "rgbfoot", "price": 18150},
+    "RGB 풋등 1열 (2개)": {"category": "완제품 세트", "image": "rgbfoot", "price": 18200},
     "RGB 풋등 2열 (2개)": {"category": "완제품 세트", "image": "rgbfoot2", "price": 24200},
-    "무빙 풋등 1열 (2개)": {"category": "완제품 세트", "image": "movingfoot1", "price": 18150},
+    "무빙 풋등 1열 (2개)": {"category": "완제품 세트", "image": "movingfoot1", "price": 18200},
     "무빙 풋등 2열 (2개)": {"category": "완제품 세트", "image": "movingfoot2", "price": 24200},
 }
 
