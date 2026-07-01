@@ -59,6 +59,7 @@ IMG_TITLE_KEYWORDS = (
 
 running = False
 stop_flag = False
+skip_flag = False
 
 pyautogui.FAILSAFE = True
 
@@ -1166,7 +1167,7 @@ def select_recent_typed_text(char_count: int) -> None:
 
     with kb_controller.pressed(Key.shift):
         for _ in range(char_count):
-            if stop_flag:
+            if check_skip_or_stop():
                 break
             kb_controller.press(Key.left)
             kb_controller.release(Key.left)
@@ -1181,7 +1182,10 @@ def run_post_estimate_location_action(blog_index: int = 1) -> None:
     time.sleep(0.3)
 
     if not click_image_forever(MAP_TEMPLATE, confidence=0.85):
-        raise RuntimeError("map.png 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status("map.png 건너뜀, 다음 단계로 진행")
+        return
 
     time.sleep(0.2)
     paste_text_safely("자동차로 53")
@@ -1199,13 +1203,22 @@ def run_post_estimate_location_action(blog_index: int = 1) -> None:
         avicle_confidence = 0.85
 
     if not click_image_forever(avicle_template, confidence=avicle_confidence):
-        raise RuntimeError(f"{avicle_name} 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status(f"{avicle_name} 건너뜀, 다음 단계로 진행")
+        return
 
     if not click_image_forever(ADD_TEMPLATE, confidence=0.85):
-        raise RuntimeError("add.png 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status("add.png 건너뜀, 다음 단계로 진행")
+        return
 
     if not click_image_forever(CHECK_TEMPLATE, confidence=0.85):
-        raise RuntimeError("check.png 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status("check.png 건너뜀, 다음 단계로 진행")
+        return
 
     time.sleep(0.2)
     pyautogui.press("enter", presses=2, interval=0.15)
@@ -1217,10 +1230,16 @@ def run_estimate_link_action(blog_index: int = 1) -> None:
     select_recent_typed_text(len(SPECIAL_LINK_TEXT))
 
     if not click_image_forever(RINK_TEMPLATE, confidence=0.85):
-        raise RuntimeError("rink.png 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status("rink.png 건너뜀, 다음 단계로 진행")
+        return
 
     if not click_image_forever(URL_TEMPLATE, confidence=0.85):
-        raise RuntimeError("url.png 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status("url.png 건너뜀, 다음 단계로 진행")
+        return
 
     time.sleep(0.2)
     pyperclip.copy(get_tel_link(blog_index))
@@ -1243,7 +1262,10 @@ def run_quote_block_action(quote_text: str) -> None:
     set_status("인용구 입력 작업 중...")
 
     if not click_image_forever(QUOTE_TEMPLATE, confidence=0.85):
-        raise RuntimeError("66.PNG 이미지를 찾지 못했습니다.")
+        if stop_flag:
+            return
+        set_status("인용구 이미지 건너뜀, 다음 단계로 진행")
+        return
 
     time.sleep(0.2)
     paste_text_safely(quote_text)
@@ -1252,7 +1274,7 @@ def run_quote_block_action(quote_text: str) -> None:
     time.sleep(0.2)
 
 def human_like_typing(text: str, blog_index: int = 1):
-    global stop_flag
+    global stop_flag, skip_flag
 
     if not text:
         return
@@ -1270,6 +1292,8 @@ def human_like_typing(text: str, blog_index: int = 1):
     while index < text_length:
         if stop_flag:
             break
+        if consume_skip_flag():
+            set_status("F4: 타이핑 중 현재 작업 건너뜀")
 
         chars_since_focus_check += 1
         if chars_since_focus_check >= focus_check_interval:
@@ -1279,6 +1303,8 @@ def human_like_typing(text: str, blog_index: int = 1):
 
         if text.startswith(SPECIAL_LINK_TEXT, index):
             for special_char in SPECIAL_LINK_TEXT:
+                if check_skip_or_stop():
+                    break
                 pyperclip.copy(special_char)
                 pyautogui.hotkey("ctrl", "v")
                 time.sleep(delay * random.uniform(0.8, 1.2))
@@ -1650,6 +1676,19 @@ def activate_browser_window(adjust_geometry: bool = False) -> bool:
 def get_search_region():
     return (WIN_X, WIN_Y, WIN_W, WIN_H)
 
+def consume_skip_flag() -> bool:
+    global skip_flag
+    if skip_flag:
+        skip_flag = False
+        return True
+    return False
+
+
+def check_skip_or_stop() -> bool:
+    """stop_flag 또는 skip_flag(F4)가 설정되었으면 True."""
+    return stop_flag or skip_flag
+
+
 def locate_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDENCE):
     if not os.path.isfile(template_path):
         raise FileNotFoundError(f"템플릿 이미지가 없습니다: {template_path}")
@@ -1658,6 +1697,9 @@ def locate_image_forever(template_path: str, confidence: float = DEFAULT_CONFIDE
 
     while True:
         if stop_flag:
+            return None
+        if consume_skip_flag():
+            set_status("F4: 현재 단계 건너뜀")
             return None
 
         activate_browser_window()
@@ -1714,6 +1756,9 @@ def click_image_limited(template_path: str, attempts: int = 2, confidence: float
     for _ in range(attempts):
         if stop_flag:
             return False
+        if consume_skip_flag():
+            set_status("F4: 현재 단계 건너뜀")
+            return False
 
         loc = locate_image_once(template_path, confidence=confidence)
         if loc is not None:
@@ -1747,7 +1792,9 @@ def scroll_horizontal_to_right() -> None:
     pyautogui.keyDown("shift")
     try:
         for _ in range(18):
-            if stop_flag:
+            if check_skip_or_stop():
+                if consume_skip_flag():
+                    set_status("F4: 스크롤 단계 건너뜀")
                 break
             pyautogui.scroll(-800)
     finally:
@@ -1818,6 +1865,11 @@ def dismiss_help_popup_or_arrow_up() -> None:
 
     for _ in range(3):
         if stop_flag:
+            return
+        if consume_skip_flag():
+            set_status("F4: help_header 단계 건너뜀")
+            pyautogui.press("up")
+            time.sleep(0.1)
             return
 
         activate_browser_window()
@@ -2035,7 +2087,9 @@ def run_pre_typing_action(
 
     set_status(f"{blog_label} 사전 작업: 로그인 버튼 찾는 중...")
     if not click_login_template():
-        return
+        if stop_flag:
+            return
+        set_status(f"{blog_label} 로그인 버튼 건너뜀, 다음 단계로 진행")
 
     if stop_flag:
         return
@@ -2189,7 +2243,7 @@ def validate_blog_content(blog_index: int):
     return title, content
 
 def _run_automation_in_thread(workflow_callable, complete_message: str, start_message: str = "3초 후 시작 (입력창 클릭 준비)...") -> bool:
-    global running, stop_flag
+    global running, stop_flag, skip_flag
 
     if running:
         messagebox.showwarning("알림", "이미 작업이 실행 중입니다.")
@@ -2197,6 +2251,7 @@ def _run_automation_in_thread(workflow_callable, complete_message: str, start_me
 
     running = True
     stop_flag = False
+    skip_flag = False
 
     def task():
         global running
@@ -2257,7 +2312,7 @@ def start_blog_test(blog_index: int):
     )
 
 def start_typing():
-    global running, stop_flag
+    global running, stop_flag, skip_flag
 
     if running:
         return
@@ -2291,6 +2346,7 @@ def start_typing():
 
     running = True
     stop_flag = False
+    skip_flag = False
 
     def task():
         global running
@@ -3455,7 +3511,7 @@ speed_scale.bind("<ButtonRelease-1>", lambda event: save_config())
 
 tk.Label(
     settings_section,
-    text="[F2] 블로그 자동 작성 시작   |   [ESC] 작업 강제 중지",
+    text="[F2] 블로그 자동 작성 시작   |   [F4] 다음 단계 건너뛰기   |   [ESC] 작업 강제 중지",
     fg=DANGER,
     bg=BG_MAIN,
     font=("맑은 고딕", 10, "bold"),
@@ -3646,10 +3702,14 @@ load_txt_files()
 
 # ---------------- 단축키 감지 및 실행 ----------------
 def on_press(key):
-    global stop_flag
+    global stop_flag, skip_flag
     try:
         if key == keyboard.Key.f2:
             root.after(0, start_typing)
+        elif key == keyboard.Key.f4:
+            if running:
+                skip_flag = True
+                root.after(0, lambda: set_status("F4: 다음 단계로 건너뛰기 요청됨..."))
         elif key == keyboard.Key.esc:
             stop_flag = True
     except Exception:
