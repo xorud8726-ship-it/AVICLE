@@ -1175,6 +1175,19 @@ def select_recent_typed_text(char_count: int) -> None:
 
     time.sleep(0.2)
 
+def _tab_then_enter(tab_count: int, interval: float = 0.12) -> bool:
+    """Tab N회 후 Enter. stop/skip 시 False."""
+    if check_skip_or_stop():
+        return False
+    if tab_count > 0:
+        pyautogui.press("tab", presses=tab_count, interval=interval)
+        time.sleep(0.15)
+    if check_skip_or_stop():
+        return False
+    pyautogui.press("enter")
+    time.sleep(0.35)
+    return True
+
 def run_post_estimate_location_action(blog_index: int = 1) -> None:
     set_status("견적상담하기 후 지도/주소 작업 중...")
 
@@ -1193,31 +1206,12 @@ def run_post_estimate_location_action(blog_index: int = 1) -> None:
     pyautogui.press("enter")
     time.sleep(0.4)
 
-    if blog_index == 3:
-        avicle_template = AVICLE_EDGE_TEMPLATE
-        avicle_name = "avicle_edge.png"
-        avicle_confidence = 0.80
-    else:
-        avicle_template = AVICLE_TEMPLATE
-        avicle_name = "avicle.png"
-        avicle_confidence = 0.85
-
-    if not click_image_forever(avicle_template, confidence=avicle_confidence):
-        if stop_flag:
-            return
-        set_status(f"{avicle_name} 건너뜀, 다음 단계로 진행")
+    set_status("지도 추가: Tab+Enter 키보드 단계 진행 중...")
+    if not _tab_then_enter(2):
         return
-
-    if not click_image_forever(ADD_TEMPLATE, confidence=0.85):
-        if stop_flag:
-            return
-        set_status("add.png 건너뜀, 다음 단계로 진행")
+    if not _tab_then_enter(1):
         return
-
-    if not click_image_forever(CHECK_TEMPLATE, confidence=0.85):
-        if stop_flag:
-            return
-        set_status("check.png 건너뜀, 다음 단계로 진행")
+    if not _tab_then_enter(10):
         return
 
     time.sleep(0.2)
