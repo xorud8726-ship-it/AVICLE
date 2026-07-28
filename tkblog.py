@@ -2467,13 +2467,14 @@ def build_region_instruction(region: str) -> str:
 
     return f"""[REGION RULE]
 - Selected customer region: {region}
-- Title MUST use "{region}" as the SEO location keyword (do NOT put "광주" in the title; use "{region}" instead)
+- Title MUST include "{region}에서 방문" naturally
+- Do NOT put "광주" in the title when the selected region is "{region}"
 - Body narrative MUST reflect that the customer came from {region} to Gwangju for installation
 - Natural Korean tone examples to weave in (vary wording, do not copy verbatim every time):
   - "{region}에서 시공하러 광주까지 오신"
   - "{region}에서 광주 에이비클로 방문하신"
 - Installation shop/location remains 광주 에이비클
-- In the body, use both "{region}" and "광주" naturally for SEO, but title location keyword is "{region}" only
+- In the body, use both "{region}" and "광주" naturally for SEO
 
 """
 
