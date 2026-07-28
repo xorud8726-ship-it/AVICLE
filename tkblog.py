@@ -57,6 +57,18 @@ IMG_TITLE_KEYWORDS = (
     "군산", "여수", "익산", "광양",
 )
 
+REGION_OPTIONS = (
+    "광주",
+    "전주",
+    "순천",
+    "목포",
+    "군산",
+    "여수",
+    "익산",
+    "광양",
+)
+DEFAULT_REGION = "광주"
+
 running = False
 stop_flag = False
 skip_flag = False
@@ -591,6 +603,7 @@ def _build_config_data():
         "blog_write_url_3": blog_write_url_var_3.get().strip(),
         "blog_run_mode": int(blog_run_mode_var.get()),
         "speed_cpm": int(speed_scale.get()),
+        "selected_region": region_var.get().strip() or DEFAULT_REGION,
     }
 
 def save_config(save_window_geometry: bool = False):
@@ -678,6 +691,12 @@ def load_config():
         blog_run_mode_var.set(int(data.get("blog_run_mode", 1)))
         speed_scale.set(int(data.get("speed_cpm", DEFAULT_SPEED_CPM)))
         update_speed_label()
+
+        saved_region = str(data.get("selected_region", DEFAULT_REGION)).strip()
+        if saved_region in REGION_OPTIONS:
+            region_var.set(saved_region)
+        else:
+            region_var.set(DEFAULT_REGION)
 
         apply_window_geometry(str(data.get("window_geometry", "")).strip())
 
@@ -2440,8 +2459,30 @@ def get_cursor_api_key() -> str:
             return value
     return ""
 
+def build_region_instruction(region: str) -> str:
+    """타지역 선택 시 Cursor AI / 프롬프트 복사에 붙일 지역 지시문."""
+    region = (region or DEFAULT_REGION).strip()
+    if not region or region == DEFAULT_REGION:
+        return ""
+
+    return f"""[REGION RULE]
+- Selected customer region: {region}
+- Title MUST use "{region}" as the SEO location keyword (do NOT put "광주" in the title; use "{region}" instead)
+- Body narrative MUST reflect that the customer came from {region} to Gwangju for installation
+- Natural Korean tone examples to weave in (vary wording, do not copy verbatim every time):
+  - "{region}에서 시공하러 광주까지 오신"
+  - "{region}에서 광주 에이비클로 방문하신"
+- Installation shop/location remains 광주 에이비클
+- In the body, use both "{region}" and "광주" naturally for SEO, but title location keyword is "{region}" only
+
+"""
+
 def build_blog_ai_prompt(template_index: int, script: str) -> str:
-    return prompt_templates[template_index].format(script=script)
+    base_prompt = prompt_templates[template_index].format(script=script)
+    region_instruction = build_region_instruction(region_var.get().strip())
+    if region_instruction:
+        return f"{region_instruction}{base_prompt}"
+    return base_prompt
 
 def _strip_markdown_fence(text: str) -> str:
     text = text.strip()
@@ -2730,7 +2771,7 @@ def _cursor_api_request(
         raise RuntimeError(f"Cursor API 연결 실패: {e.reason}") from e
 
 def _fetch_run_stream_text(agent_id: str, run_id: str, api_key: str) -> str:
-    """run.result가 요약만 줄 때 stream의 assistant 전문을 수집합니다."""
+    """run.result가 요약만 줄 때 stream으로 assistant 전문을 수집합니다."""
     url = f"{CURSOR_API_BASE_URL}/agents/{agent_id}/runs/{run_id}/stream"
     headers = {
         "Authorization": _cursor_api_auth_header(api_key),
@@ -3569,6 +3610,7 @@ prompt_text_input = tk.Text(tab2_f, font=("맑은 고딕", 11), height=12, relie
 prompt_text_input.pack(fill="x", padx=30, pady=5)
 
 car_type_var = tk.StringVar()
+region_var = tk.StringVar(value=DEFAULT_REGION)
 car_type_frame = tk.Frame(tab2_f, bg=BG_MAIN)
 car_type_frame.pack(fill="x", padx=30, pady=(8, 0))
 tk.Label(car_type_frame, text="차종 입력 (파일명 저장용)", font=("맑은 고딕", 11, "bold"), bg=BG_MAIN, fg=TEXT_MAIN).pack(side="left")
@@ -3583,6 +3625,24 @@ cursor_ai_status_var = tk.StringVar()
 
 cursor_ai_wrap = ttk.LabelFrame(tab2_f, text="  Cursor AI 자동 작성  ", padding=(12, 12))
 cursor_ai_wrap.pack(fill="x", padx=30, pady=(10, 5))
+
+region_row = tk.Frame(cursor_ai_wrap, bg=BG_PANEL)
+region_row.pack(fill="x", pady=(0, 10))
+tk.Label(
+    region_row,
+    text="지역",
+    font=("맑은 고딕", 10, "bold"),
+    bg=BG_PANEL,
+    fg=TEXT_MAIN,
+).pack(side="left", padx=(0, 10))
+for region_name in REGION_OPTIONS:
+    ttk.Radiobutton(
+        region_row,
+        text=region_name,
+        variable=region_var,
+        value=region_name,
+        command=save_config,
+    ).pack(side="left", padx=(0, 6))
 
 cursor_ai_btn_row = tk.Frame(cursor_ai_wrap, bg=BG_PANEL)
 cursor_ai_btn_row.pack(fill="x")
@@ -3609,7 +3669,7 @@ else:
 
 tk.Label(
     cursor_ai_wrap,
-    text="대본+차종 입력 → 버튼 클릭 → 해당 프롬프트+멘트를 API에 그대로 전달 → 작성란 반영 → 차종_날짜.txt 저장",
+    text="지역 선택 → 대본+차종 입력 → 버튼 클릭 → 해당 프롬프트+멘트(+타지역 지시) 전달 → 작성란 반영 → 차종_날짜.txt 저장",
     font=("맑은 고딕", 9),
     bg=BG_PANEL,
     fg=TEXT_MUTED,
